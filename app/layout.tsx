@@ -1,23 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
-
-const appName = process.env.NEXT_PUBLIC_APP_NAME || "App Big";
+import { appConfig } from "@/lib/app-config";
 
 export const metadata: Metadata = {
-  title: appName,
-  description: "PWA mobile-first para acesso rapido a plataforma App Big.",
-  applicationName: appName,
-  manifest: "/manifest.json",
+  title: appConfig.name,
+  description: appConfig.description,
+  applicationName: appConfig.name,
+  manifest: "/manifest.webmanifest",
+  metadataBase: appConfig.publicUrl ? new URL(appConfig.publicUrl) : undefined,
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: appName,
+    title: appConfig.shortName,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101828",
+  themeColor: appConfig.themeColor,
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

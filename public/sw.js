@@ -1,5 +1,5 @@
 const CACHE_NAME = "app-big-v1";
-const PRECACHE_URLS = ["/", "/manifest.json"];
+const PRECACHE_URLS = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
