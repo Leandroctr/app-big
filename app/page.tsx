@@ -33,6 +33,7 @@ function getClientFallbackSettings(): AppSettings {
     backgroundColor: appConfigClient.backgroundColor,
     splashTitle: appConfigClient.appName,
     splashMessage: "Carregando ambiente seguro...",
+    splashImageUrl: appConfigClient.splashImageUrl,
     redirectDelayMs: 1500,
     notificationsEnabled: false,
     oneSignalAppId: appConfigClient.oneSignalAppId,
@@ -58,8 +59,13 @@ export default function Home() {
         "--app-primary": settings.themeColor,
         "--app-background": settings.backgroundColor,
         backgroundColor: "var(--app-background)",
+        backgroundImage: settings.splashImageUrl
+          ? `linear-gradient(rgba(246, 247, 251, 0.86), rgba(246, 247, 251, 0.92)), url("${settings.splashImageUrl}")`
+          : undefined,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
       }) as CSSProperties,
-    [settings.backgroundColor, settings.themeColor],
+    [settings.backgroundColor, settings.splashImageUrl, settings.themeColor],
   );
 
   useEffect(() => {

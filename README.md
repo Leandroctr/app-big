@@ -50,6 +50,7 @@ Implementado:
 - Painel white-label em `/admin/settings`.
 - API publica `/api/settings` para leitura da configuracao ativa.
 - API admin `/api/admin/settings` para salvar identidade e comportamento do PWA.
+- API admin `/api/admin/upload` para enviar ativos visuais ao Supabase Storage.
 - Formulario para envio de push teste ou para todos.
 - Historico basico de campanhas.
 
@@ -61,7 +62,6 @@ Ainda nao implementado:
 - Campanhas automaticas.
 - Dashboard complexo.
 - Login de usuario final.
-- Upload de logo/icones via Supabase Storage.
 
 ## Ambiente
 
@@ -98,8 +98,8 @@ ADMIN_PASSWORD=
 
 A configuracao principal pode ser editada em `/admin/settings`. O painel salva
 um registro global em `app_settings` no Supabase e permite alterar identidade,
-URLs, cores, splash, delay de redirecionamento, icones por URL e estado das
-notificacoes sem editar `.env`.
+URLs, cores, splash, delay de redirecionamento, icones, favicon, logo e estado
+das notificacoes sem editar `.env`.
 
 Se o Supabase nao estiver configurado, a tabela ainda nao existir ou a busca
 falhar, o app usa fallback das variaveis de ambiente lidas por `lib/app-config.ts`
@@ -145,10 +145,10 @@ Variaveis que normalmente mudam por dominio/site:
 - `NEXT_PUBLIC_HOME_FLOATING_SUPPORT`: legado do layout anterior, mantido para
   compatibilidade.
 
-O manifest, o splash launcher, o painel e as integracoes publicas consomem
-as configuracoes salvas no Supabase quando possivel. Nome, descricao, cores,
-logo, icones, favicon e URLs acompanham automaticamente o registro ativo; em
-caso de falha, o fallback por `.env` mantem o PWA funcionando.
+O manifest, o splash launcher, o painel e as integracoes publicas consomem as
+configuracoes salvas no Supabase quando possivel. Nome, descricao, cores, logo,
+icones, favicon, imagem de splash e URLs acompanham automaticamente o registro
+ativo; em caso de falha, o fallback por `.env` mantem o PWA funcionando.
 
 Para criar uma nova marca:
 
@@ -158,7 +158,7 @@ Para criar uma nova marca:
 3. Rode `supabase/schema.sql` no projeto Supabase.
 4. Acesse `/admin/login`.
 5. Abra `/admin/settings`.
-6. Ajuste nome, URLs, cores, logo, icones, splash e notificacoes.
+6. Ajuste nome, URLs, cores, logo, favicon, icones, splash e notificacoes.
 7. Teste `/manifest.webmanifest`, instalacao do PWA e redirecionamento.
 
 Ainda dependem de configuracao externa:
@@ -168,19 +168,61 @@ Ainda dependem de configuracao externa:
 - Projeto Supabase e `SUPABASE_SERVICE_ROLE_KEY`.
 - OneSignal REST key para envio server-side.
 - Configuracao do dominio HTTPS no OneSignal.
-- URLs publicas de logo, icones e favicon ate a etapa de upload via Storage.
+- Arquivos externos que ainda nao tenham sido enviados pelo painel.
+
+## Ativos visuais e uploads
+
+O painel `/admin/settings` aceita upload de imagens e preenche automaticamente
+as URLs salvas em `app_settings`. A rota `/api/admin/upload` usa o Supabase
+Admin no servidor, valida formato e tamanho, envia o arquivo para o bucket
+`app-assets` e retorna uma URL publica.
+
+Formatos aceitos:
+
+- `png`
+- `jpg`
+- `jpeg`
+- `webp`
+- `svg`
+- `ico`
+
+Limites por ativo:
+
+- Logo principal: 512x512 px recomendado, ate 500 KB.
+- Favicon: 32x32 px recomendado, ate 100 KB.
+- Icone PWA 192: 192x192 px obrigatorio, ate 300 KB.
+- Icone PWA 512: 512x512 px obrigatorio, ate 500 KB.
+- Splash Screen: 1080x1920 px recomendado, ate 1 MB.
+
+O painel mostra preview, nome do arquivo, dimensoes, tamanho em KB, alerta
+quando a resolucao nao bate com a recomendacao e indicador de qualidade. Os
+campos manuais de URL continuam disponiveis em "Configuracao avancada por URL"
+para compatibilidade.
 
 ## Supabase
 
 1. Crie um projeto no Supabase.
 2. Rode o SQL de `supabase/schema.sql` no SQL editor do projeto.
-3. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Preencha `SUPABASE_SERVICE_ROLE_KEY` apenas no ambiente servidor/deploy.
+3. Confirme que o bucket publico `app-assets` existe em Storage.
+4. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+5. Preencha `SUPABASE_SERVICE_ROLE_KEY` apenas no ambiente servidor/deploy.
+
+O SQL tenta criar/atualizar o bucket publico automaticamente:
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('app-assets', 'app-assets', true)
+on conflict (id) do update set public = excluded.public;
+```
+
+Se preferir criar manualmente pelo painel do Supabase, acesse Storage, crie o
+bucket `app-assets` e marque como publico.
 
 Tabelas usadas:
 
 - `push_subscriptions`: inscricoes web push, com `onesignal_id` unico.
 - `push_campaigns`: historico basico de campanhas enviadas.
+- `app_settings`: configuracao white-label global do PWA.
 
 ## OneSignal
 

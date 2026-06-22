@@ -11,6 +11,7 @@ export const appConfigClient = {
   supportUrl: process.env.NEXT_PUBLIC_SUPPORT_URL || "#",
   publicUrl: process.env.NEXT_PUBLIC_PUBLIC_URL || "",
   logoUrl: process.env.NEXT_PUBLIC_LOGO_URL || "",
+  splashImageUrl: "",
   themeColor: process.env.NEXT_PUBLIC_THEME_COLOR || "#101828",
   backgroundColor: process.env.NEXT_PUBLIC_BACKGROUND_COLOR || "#f6f7fb",
 };

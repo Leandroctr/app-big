@@ -19,6 +19,7 @@ type SettingsPayload = {
   backgroundColor?: string;
   splashTitle?: string;
   splashMessage?: string;
+  splashImageUrl?: string;
   redirectDelayMs?: number;
   notificationsEnabled?: boolean;
   oneSignalAppId?: string;
@@ -45,6 +46,7 @@ function normalizePayload(payload: SettingsPayload) {
     backgroundColor: cleanText(payload.backgroundColor, "#f6f7fb"),
     splashTitle: cleanText(payload.splashTitle),
     splashMessage: cleanText(payload.splashMessage),
+    splashImageUrl: cleanText(payload.splashImageUrl),
     redirectDelayMs: Math.max(
       0,
       Math.round(Number(payload.redirectDelayMs) || 1500),

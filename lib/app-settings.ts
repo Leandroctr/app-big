@@ -16,6 +16,7 @@ export type AppSettings = {
   backgroundColor: string;
   splashTitle: string;
   splashMessage: string;
+  splashImageUrl: string;
   redirectDelayMs: number;
   notificationsEnabled: boolean;
   oneSignalAppId: string;
@@ -38,6 +39,7 @@ export type AppSettingsRow = {
   background_color?: string | null;
   splash_title?: string | null;
   splash_message?: string | null;
+  splash_image_url?: string | null;
   redirect_delay_ms?: number | null;
   notifications_enabled?: boolean | null;
   onesignal_app_id?: string | null;
@@ -65,6 +67,7 @@ export function getFallbackAppSettings(): AppSettings {
     backgroundColor: appConfig.backgroundColor,
     splashTitle: appConfig.name,
     splashMessage: "Carregando ambiente seguro...",
+    splashImageUrl: "",
     redirectDelayMs: 1500,
     notificationsEnabled: false,
     oneSignalAppId: appConfig.oneSignalAppId,
@@ -112,6 +115,7 @@ export function settingsRowToAppSettings(
     ),
     splashTitle: textOrFallback(row.splash_title, fallback.splashTitle),
     splashMessage: textOrFallback(row.splash_message, fallback.splashMessage),
+    splashImageUrl: textOrFallback(row.splash_image_url, fallback.splashImageUrl),
     redirectDelayMs: numberOrFallback(
       row.redirect_delay_ms,
       fallback.redirectDelayMs,
@@ -141,6 +145,7 @@ export function appSettingsToRow(settings: Partial<AppSettings>) {
     background_color: settings.backgroundColor,
     splash_title: settings.splashTitle,
     splash_message: settings.splashMessage,
+    splash_image_url: settings.splashImageUrl,
     redirect_delay_ms: settings.redirectDelayMs,
     notifications_enabled: settings.notificationsEnabled,
     onesignal_app_id: settings.oneSignalAppId,

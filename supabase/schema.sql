@@ -42,12 +42,16 @@ create table if not exists public.app_settings (
   background_color text,
   splash_title text,
   splash_message text,
+  splash_image_url text,
   redirect_delay_ms integer default 1500,
   notifications_enabled boolean default false,
   onesignal_app_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.app_settings
+  add column if not exists splash_image_url text;
 
 insert into public.app_settings (
   singleton_key,
@@ -65,6 +69,7 @@ insert into public.app_settings (
   background_color,
   splash_title,
   splash_message,
+  splash_image_url,
   redirect_delay_ms,
   notifications_enabled,
   onesignal_app_id
@@ -85,6 +90,7 @@ values (
   '#f6f7fb',
   'App Big',
   'Carregando ambiente seguro...',
+  '',
   1500,
   false,
   ''
@@ -107,6 +113,10 @@ end $$;
 alter table public.push_subscriptions enable row level security;
 alter table public.push_campaigns enable row level security;
 alter table public.app_settings enable row level security;
+
+insert into storage.buckets (id, name, public)
+values ('app-assets', 'app-assets', true)
+on conflict (id) do update set public = excluded.public;
 
 create policy "Allow anonymous push subscription registration"
   on public.push_subscriptions
