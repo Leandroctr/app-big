@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { appConfig } from "@/lib/app-config";
+import type { AppSettings } from "@/lib/app-settings";
+import { getAppSettings } from "@/lib/app-settings.server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
@@ -23,10 +24,10 @@ function isSafeUrl(value: string) {
   }
 }
 
-function normalizePayload(payload: SendPayload) {
-  const fallbackTargetUrl = isSafeUrl(appConfig.platformUrl)
-    ? appConfig.platformUrl
-    : appConfig.publicUrl || "/";
+function normalizePayload(payload: SendPayload, settings: AppSettings) {
+  const fallbackTargetUrl = isSafeUrl(settings.platformUrl)
+    ? settings.platformUrl
+    : settings.publicUrl || "/";
   const targetUrl = payload.targetUrl?.trim() || fallbackTargetUrl;
 
   return {
@@ -47,8 +48,9 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseAdminClient();
   const oneSignalRestApiKey = process.env.ONESIGNAL_REST_API_KEY;
+  const settings = await getAppSettings();
 
-  if (!supabase || !appConfig.oneSignalAppId || !oneSignalRestApiKey) {
+  if (!supabase || !settings.oneSignalAppId || !oneSignalRestApiKey) {
     return NextResponse.json(
       { ok: false, error: "Supabase ou OneSignal nao configurado." },
       { status: 503 },
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const data = normalizePayload(payload);
+  const data = normalizePayload(payload, settings);
 
   if (!data.title || !data.message) {
     return NextResponse.json(
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      app_id: appConfig.oneSignalAppId,
+      app_id: settings.oneSignalAppId,
       include_subscription_ids: subscriptionIds,
       headings: { en: data.title, pt: data.title },
       contents: { en: data.message, pt: data.message },

@@ -5,6 +5,7 @@ import { initializeOneSignal } from "@/lib/onesignal/client";
 
 type NotificationButtonProps = {
   themeColor: string;
+  oneSignalAppId?: string;
 };
 
 type Status = {
@@ -12,7 +13,10 @@ type Status = {
   message: string;
 };
 
-export function NotificationButton({ themeColor }: NotificationButtonProps) {
+export function NotificationButton({
+  themeColor,
+  oneSignalAppId,
+}: NotificationButtonProps) {
   const [status, setStatus] = useState<Status>({
     type: "idle",
     message: "",
@@ -24,7 +28,7 @@ export function NotificationButton({ themeColor }: NotificationButtonProps) {
       message: "Ativando notificacoes...",
     });
 
-    const result = await initializeOneSignal();
+    const result = await initializeOneSignal(oneSignalAppId);
 
     setStatus({
       type: result.subscribed ? "success" : "error",

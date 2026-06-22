@@ -25,6 +25,72 @@ create table if not exists public.push_campaigns (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.app_settings (
+  id uuid primary key default gen_random_uuid(),
+  singleton_key boolean not null default true unique,
+  app_name text,
+  app_short_name text,
+  app_description text,
+  platform_url text,
+  support_url text,
+  public_url text,
+  logo_url text,
+  icon_192_url text,
+  icon_512_url text,
+  favicon_url text,
+  theme_color text,
+  background_color text,
+  splash_title text,
+  splash_message text,
+  redirect_delay_ms integer default 1500,
+  notifications_enabled boolean default false,
+  onesignal_app_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+insert into public.app_settings (
+  singleton_key,
+  app_name,
+  app_short_name,
+  app_description,
+  platform_url,
+  support_url,
+  public_url,
+  logo_url,
+  icon_192_url,
+  icon_512_url,
+  favicon_url,
+  theme_color,
+  background_color,
+  splash_title,
+  splash_message,
+  redirect_delay_ms,
+  notifications_enabled,
+  onesignal_app_id
+)
+values (
+  true,
+  'App Big',
+  'App Big',
+  'PWA mobile-first para acesso rapido a plataforma.',
+  '#',
+  '#',
+  '',
+  '',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg',
+  '',
+  '#101828',
+  '#f6f7fb',
+  'App Big',
+  'Carregando ambiente seguro...',
+  1500,
+  false,
+  ''
+)
+on conflict (singleton_key) do nothing;
+
 do $$
 begin
   if not exists (
@@ -40,6 +106,7 @@ end $$;
 
 alter table public.push_subscriptions enable row level security;
 alter table public.push_campaigns enable row level security;
+alter table public.app_settings enable row level security;
 
 create policy "Allow anonymous push subscription registration"
   on public.push_subscriptions

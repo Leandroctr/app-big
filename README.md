@@ -47,6 +47,9 @@ Implementado:
 - API `/api/push/send` para envio server-side via OneSignal.
 - Painel admin MVP em `/admin`.
 - Login admin MVP em `/admin/login`.
+- Painel white-label em `/admin/settings`.
+- API publica `/api/settings` para leitura da configuracao ativa.
+- API admin `/api/admin/settings` para salvar identidade e comportamento do PWA.
 - Formulario para envio de push teste ou para todos.
 - Historico basico de campanhas.
 
@@ -58,6 +61,7 @@ Ainda nao implementado:
 - Campanhas automaticas.
 - Dashboard complexo.
 - Login de usuario final.
+- Upload de logo/icones via Supabase Storage.
 
 ## Ambiente
 
@@ -92,9 +96,14 @@ ADMIN_PASSWORD=
 
 ## White-label
 
-A configuracao principal fica em `lib/app-config.ts`. Para criar uma nova
-variacao do PWA, use a mesma base de codigo e altere apenas as variaveis de
-ambiente do deploy.
+A configuracao principal pode ser editada em `/admin/settings`. O painel salva
+um registro global em `app_settings` no Supabase e permite alterar identidade,
+URLs, cores, splash, delay de redirecionamento, icones por URL e estado das
+notificacoes sem editar `.env`.
+
+Se o Supabase nao estiver configurado, a tabela ainda nao existir ou a busca
+falhar, o app usa fallback das variaveis de ambiente lidas por `lib/app-config.ts`
+e `lib/app-config.client.ts`.
 
 ## Fluxo publico do PWA
 
@@ -137,8 +146,29 @@ Variaveis que normalmente mudam por dominio/site:
   compatibilidade.
 
 O manifest, o splash launcher, o painel e as integracoes publicas consomem
-`lib/app-config.ts`, entao nome, descricao, cores, logo e URLs acompanham
-automaticamente o ambiente configurado.
+as configuracoes salvas no Supabase quando possivel. Nome, descricao, cores,
+logo, icones, favicon e URLs acompanham automaticamente o registro ativo; em
+caso de falha, o fallback por `.env` mantem o PWA funcionando.
+
+Para criar uma nova marca:
+
+1. Configure dominio, DNS e deploy da nova marca.
+2. Preencha as variaveis minimas de ambiente na Vercel para Supabase, admin e
+   integracoes externas.
+3. Rode `supabase/schema.sql` no projeto Supabase.
+4. Acesse `/admin/login`.
+5. Abra `/admin/settings`.
+6. Ajuste nome, URLs, cores, logo, icones, splash e notificacoes.
+7. Teste `/manifest.webmanifest`, instalacao do PWA e redirecionamento.
+
+Ainda dependem de configuracao externa:
+
+- Dominio publico e DNS.
+- Variaveis de ambiente da Vercel.
+- Projeto Supabase e `SUPABASE_SERVICE_ROLE_KEY`.
+- OneSignal REST key para envio server-side.
+- Configuracao do dominio HTTPS no OneSignal.
+- URLs publicas de logo, icones e favicon ate a etapa de upload via Storage.
 
 ## Supabase
 

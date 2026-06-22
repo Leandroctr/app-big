@@ -97,6 +97,9 @@ export default async function AdminPage() {
             <h1 className="text-2xl font-black tracking-normal">Painel Admin</h1>
           </div>
           <div className="flex items-center gap-4">
+            <Link className="text-sm font-bold text-slate-700" href="/admin/settings">
+              Configuracoes
+            </Link>
             <Link className="text-sm font-bold text-slate-700" href="/">
               Ver home
             </Link>

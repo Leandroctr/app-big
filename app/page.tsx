@@ -4,10 +4,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { NotificationButton } from "@/components/notification-button";
-import { appConfig } from "@/lib/app-config";
 import { appConfigClient } from "@/lib/app-config.client";
-
-const REDIRECT_DELAY_MS = 1500;
+import type { AppSettings } from "@/lib/app-settings";
 
 function isValidPlatformUrl(url: string) {
   return Boolean(url.trim()) && url.trim() !== "#";
@@ -19,46 +17,97 @@ type PlatformState = {
   url: string;
 };
 
+function getClientFallbackSettings(): AppSettings {
+  return {
+    appName: appConfigClient.appName,
+    appShortName: appConfigClient.appShortName,
+    appDescription: appConfigClient.appDescription,
+    platformUrl: appConfigClient.platformUrl,
+    supportUrl: appConfigClient.supportUrl,
+    publicUrl: appConfigClient.publicUrl,
+    logoUrl: appConfigClient.logoUrl,
+    icon192Url: "/icons/icon-192.svg",
+    icon512Url: "/icons/icon-512.svg",
+    faviconUrl: "",
+    themeColor: appConfigClient.themeColor,
+    backgroundColor: appConfigClient.backgroundColor,
+    splashTitle: appConfigClient.appName,
+    splashMessage: "Carregando ambiente seguro...",
+    redirectDelayMs: 1500,
+    notificationsEnabled: false,
+    oneSignalAppId: appConfigClient.oneSignalAppId,
+  };
+}
+
 export default function Home() {
+  const [settings, setSettings] = useState<AppSettings>(getClientFallbackSettings);
   const [platformState, setPlatformState] = useState<PlatformState>({
     mounted: false,
     isValid: false,
     url: "",
   });
   const hasPlatformError = platformState.mounted && !platformState.isValid;
-  const appInitial = appConfig.shortName.trim().charAt(0).toUpperCase() || "A";
+  const appInitial =
+    settings.appShortName.trim().charAt(0).toUpperCase() ||
+    settings.appName.trim().charAt(0).toUpperCase() ||
+    "A";
 
   const rootStyle = useMemo(
     () =>
       ({
-        "--app-primary": appConfig.themeColor,
-        "--app-background": appConfig.backgroundColor,
+        "--app-primary": settings.themeColor,
+        "--app-background": settings.backgroundColor,
         backgroundColor: "var(--app-background)",
       }) as CSSProperties,
-    [],
+    [settings.backgroundColor, settings.themeColor],
   );
 
   useEffect(() => {
-    const platformUrl = appConfigClient.platformUrl.trim();
-    const isValid = isValidPlatformUrl(platformUrl);
+    let isActive = true;
+    let validationTimer: number | undefined;
+    let redirectTimer: number | undefined;
 
-    const validationTimer = window.setTimeout(() => {
-      setPlatformState({
-        mounted: true,
-        isValid,
-        url: platformUrl,
-      });
-    }, 0);
+    async function loadSettings() {
+      let loadedSettings = getClientFallbackSettings();
 
-    if (!isValid) {
-      return () => window.clearTimeout(validationTimer);
+      try {
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        const result = await response.json();
+
+        if (response.ok && result?.settings) {
+          loadedSettings = result.settings;
+        }
+      } catch {
+        loadedSettings = getClientFallbackSettings();
+      }
+
+      if (!isActive) {
+        return;
+      }
+
+      const platformUrl = loadedSettings.platformUrl.trim();
+      const isValid = isValidPlatformUrl(platformUrl);
+      setSettings(loadedSettings);
+
+      validationTimer = window.setTimeout(() => {
+        setPlatformState({
+          mounted: true,
+          isValid,
+          url: platformUrl,
+        });
+      }, 0);
+
+      if (isValid) {
+        redirectTimer = window.setTimeout(() => {
+          window.location.assign(platformUrl);
+        }, loadedSettings.redirectDelayMs);
+      }
     }
 
-    const redirectTimer = window.setTimeout(() => {
-      window.location.assign(platformUrl);
-    }, REDIRECT_DELAY_MS);
+    loadSettings();
 
     return () => {
+      isActive = false;
       window.clearTimeout(validationTimer);
       window.clearTimeout(redirectTimer);
     };
@@ -71,13 +120,14 @@ export default function Home() {
     >
       <section className="flex w-full max-w-sm flex-col items-center text-center">
         <div className="mb-6">
-          {appConfig.logoUrl ? (
+          {settings.logoUrl ? (
             <Image
-              alt={`${appConfig.name} logo`}
+              alt={`${settings.appName} logo`}
               className="size-20 rounded-3xl object-cover shadow-xl shadow-slate-900/15"
               height={80}
               priority
-              src={appConfig.logoUrl}
+              src={settings.logoUrl}
+              unoptimized
               width={80}
             />
           ) : (
@@ -90,11 +140,13 @@ export default function Home() {
           )}
         </div>
 
-        <h1 className="text-2xl font-bold tracking-normal">{appConfig.name}</h1>
+        <h1 className="text-2xl font-bold tracking-normal">
+          {settings.splashTitle || settings.appName}
+        </h1>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
           {hasPlatformError
             ? "Nao foi possivel abrir a plataforma automaticamente."
-            : "Carregando ambiente seguro..."}
+            : settings.splashMessage || "Carregando ambiente seguro..."}
         </p>
 
         <div
@@ -122,19 +174,24 @@ export default function Home() {
 
           <a
             className="text-sm font-semibold text-slate-500 underline-offset-4 transition hover:text-slate-800 hover:underline focus:outline-none focus:ring-4 focus:ring-slate-200"
-            href={appConfigClient.supportUrl || "#"}
+            href={settings.supportUrl || "#"}
           >
             Suporte
           </a>
 
-          <details className="group mt-2 text-left">
-            <summary className="cursor-pointer list-none text-center text-xs font-semibold text-slate-400 transition hover:text-slate-600">
-              Notificacoes
-            </summary>
-            <div className="mt-3 w-64">
-              <NotificationButton themeColor={appConfig.themeColor} />
-            </div>
-          </details>
+          {settings.notificationsEnabled ? (
+            <details className="group mt-2 text-left">
+              <summary className="cursor-pointer list-none text-center text-xs font-semibold text-slate-400 transition hover:text-slate-600">
+                Notificacoes
+              </summary>
+              <div className="mt-3 w-64">
+                <NotificationButton
+                  oneSignalAppId={settings.oneSignalAppId}
+                  themeColor={settings.themeColor}
+                />
+              </div>
+            </details>
+          ) : null}
         </div>
       </section>
     </main>

@@ -90,12 +90,14 @@ async function sendSubscription(oneSignal: OneSignalInstance, permissionStatus: 
   return response.ok;
 }
 
-export async function initializeOneSignal(): Promise<OneSignalInitResult> {
+export async function initializeOneSignal(
+  oneSignalAppId = appConfigClient.oneSignalAppId,
+): Promise<OneSignalInitResult> {
   debugLog("Config publica carregada.", {
-    hasOneSignalAppId: Boolean(appConfigClient.oneSignalAppId),
+    hasOneSignalAppId: Boolean(oneSignalAppId),
   });
 
-  if (!appConfigClient.oneSignalAppId) {
+  if (!oneSignalAppId) {
     debugLog("NEXT_PUBLIC_ONESIGNAL_APP_ID vazio; push desativado.");
     return {
       enabled: false,
@@ -122,7 +124,7 @@ export async function initializeOneSignal(): Promise<OneSignalInitResult> {
         try {
           debugLog("Antes de oneSignal.init.");
           await oneSignal.init({
-            appId: appConfigClient.oneSignalAppId,
+            appId: oneSignalAppId,
             serviceWorkerPath: "/sw.js",
           });
           debugLog("Depois de oneSignal.init.");
