@@ -43,6 +43,7 @@ function getClientFallbackSettings(): AppSettings {
 
 export default function Home() {
   const [settings, setSettings] = useState<AppSettings>(getClientFallbackSettings);
+  const [splashHtml, setSplashHtml] = useState("");
   const [platformState, setPlatformState] = useState<PlatformState>({
     mounted: false,
     isValid: false,
@@ -88,6 +89,20 @@ export default function Home() {
         loadedSettings = getClientFallbackSettings();
       }
 
+      if (loadedSettings.splashHtmlUrl) {
+        console.log("[SPLASH] Buscando HTML da splash:", loadedSettings.splashHtmlUrl);
+        try {
+          const htmlResponse = await fetch(loadedSettings.splashHtmlUrl);
+          const html = await htmlResponse.text();
+          if (isActive) {
+            setSplashHtml(html);
+            console.log("[SPLASH] HTML carregado, tamanho:", html.length, "chars");
+          }
+        } catch (err) {
+          console.warn("[SPLASH] Falha ao buscar HTML da splash, usando splash estatica:", err);
+        }
+      }
+
       if (!isActive) {
         return;
       }
@@ -120,12 +135,12 @@ export default function Home() {
     };
   }, []);
 
-  if (settings.splashHtmlUrl) {
-    console.log("[SPLASH] Renderizando splash HTML:", settings.splashHtmlUrl);
+  if (splashHtml) {
+    console.log("[SPLASH] Renderizando splash HTML via srcDoc");
     return (
       <iframe
         sandbox="allow-scripts allow-same-origin"
-        src={settings.splashHtmlUrl}
+        srcDoc={splashHtml}
         style={{ position: "fixed", inset: 0, width: "100%", height: "100%", border: 0 }}
         title="Splash animada"
       />
