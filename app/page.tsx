@@ -15,7 +15,7 @@ function prepareHtml(html: string): string {
   const W = 1080;
   const H = 1920;
 
-  const inject = `<meta name="viewport" content="width=${W}">
+  const inject = `<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 html{margin:0;padding:0;width:100vw;height:100vh;overflow:hidden;}
 body{margin:0;padding:0;width:${W}px;height:${H}px;overflow:hidden;transform-origin:top left;opacity:0;}
