@@ -11,6 +11,21 @@ function isValidPlatformUrl(url: string) {
   return Boolean(url.trim()) && url.trim() !== "#";
 }
 
+function prepareHtml(html: string): string {
+  const hasViewport = /name=["']viewport["']/i.test(html);
+  const viewportTag = hasViewport
+    ? ""
+    : '<meta name="viewport" content="width=device-width, initial-scale=1">\n';
+  const resetTag =
+    '<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden}</style>\n';
+  const inject = viewportTag + resetTag;
+
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head([^>]*)>/i, `<head$1>\n${inject}`);
+  }
+  return `<head>\n${inject}</head>\n${html}`;
+}
+
 type PlatformState = {
   mounted: boolean;
   isValid: boolean;
@@ -93,9 +108,12 @@ export default function Home() {
         console.log("[SPLASH] Buscando HTML da splash:", loadedSettings.splashHtmlUrl);
         try {
           const htmlResponse = await fetch(loadedSettings.splashHtmlUrl);
+          if (!htmlResponse.ok) {
+            throw new Error(`HTTP ${htmlResponse.status}`);
+          }
           const html = await htmlResponse.text();
           if (isActive) {
-            setSplashHtml(html);
+            setSplashHtml(prepareHtml(html));
             console.log("[SPLASH] HTML carregado, tamanho:", html.length, "chars");
           }
         } catch (err) {
@@ -141,7 +159,7 @@ export default function Home() {
       <iframe
         sandbox="allow-scripts allow-same-origin"
         srcDoc={splashHtml}
-        style={{ position: "fixed", inset: 0, width: "100%", height: "100%", border: 0 }}
+        style={{ display: "block", position: "fixed", inset: 0, margin: 0, width: "100%", height: "100%", border: 0 }}
         title="Splash animada"
       />
     );
