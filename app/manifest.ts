@@ -3,8 +3,17 @@ import { getAppSettings } from "@/lib/app-settings.server";
 
 export const dynamic = "force-dynamic";
 
+function getMimeType(url: string): string {
+  if (url.endsWith(".png")) return "image/png";
+  if (url.endsWith(".webp")) return "image/webp";
+  return "image/svg+xml";
+}
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const settings = await getAppSettings();
+
+  const icon192Src = settings.icon192Url || "/icons/icon-192.svg";
+  const icon512Src = settings.icon512Url || "/icons/icon-512.svg";
 
   return {
     name: settings.appName,
@@ -18,15 +27,15 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     theme_color: settings.themeColor,
     icons: [
       {
-        src: settings.icon192Url || "/icons/icon-192.svg",
+        src: icon192Src,
         sizes: "192x192",
-        type: "image/svg+xml",
+        type: getMimeType(icon192Src),
         purpose: "any",
       },
       {
-        src: settings.icon512Url || "/icons/icon-512.svg",
+        src: icon512Src,
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: getMimeType(icon512Src),
         purpose: "maskable",
       },
     ],
