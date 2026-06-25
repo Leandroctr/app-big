@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { OneSignalInitializer } from "@/components/onesignal-initializer";
 import { getAppSettings } from "@/lib/app-settings.server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -56,6 +57,7 @@ export default async function RootLayout({
       </head>
       <body>
         <ServiceWorkerRegister />
+        <OneSignalInitializer />
         {children}
       </body>
     </html>
