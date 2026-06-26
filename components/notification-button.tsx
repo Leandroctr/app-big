@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { initializeOneSignal } from "@/lib/onesignal/client";
+import OneSignal from "react-onesignal";
 
 type NotificationButtonProps = {
   themeColor: string;
-  oneSignalAppId?: string;
 };
 
 type Status = {
@@ -13,27 +12,24 @@ type Status = {
   message: string;
 };
 
-export function NotificationButton({
-  themeColor,
-  oneSignalAppId,
-}: NotificationButtonProps) {
-  const [status, setStatus] = useState<Status>({
-    type: "idle",
-    message: "",
-  });
+export function NotificationButton({ themeColor }: NotificationButtonProps) {
+  const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
 
   async function activateNotifications() {
-    setStatus({
-      type: "loading",
-      message: "Ativando notificacoes...",
-    });
+    setStatus({ type: "loading", message: "Ativando notificacoes..." });
 
-    const result = await initializeOneSignal(oneSignalAppId);
-
-    setStatus({
-      type: result.subscribed ? "success" : "error",
-      message: result.message,
-    });
+    try {
+      await OneSignal.Slidedown.promptPush({ force: true });
+      const optedIn = OneSignal.User.PushSubscription.optedIn;
+      setStatus({
+        type: optedIn ? "success" : "error",
+        message: optedIn
+          ? "Notificacoes ativadas com sucesso."
+          : "Permissao necessaria para receber notificacoes.",
+      });
+    } catch {
+      setStatus({ type: "error", message: "Nao foi possivel ativar as notificacoes." });
+    }
   }
 
   return (

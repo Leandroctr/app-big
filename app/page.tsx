@@ -284,10 +284,7 @@ export default function Home() {
                 Notificacoes
               </summary>
               <div className="mt-3 w-64">
-                <NotificationButton
-                  oneSignalAppId={settings.oneSignalAppId}
-                  themeColor={settings.themeColor}
-                />
+                <NotificationButton themeColor={settings.themeColor} />
               </div>
             </details>
           ) : null}
