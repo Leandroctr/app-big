@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getFallbackAppSettings, settingsRowToAppSettings } from "@/lib/app-settings";
+import { getFallbackAppSettings, settingsRowToAppSettings, extractHostname } from "@/lib/app-settings";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { appConfig } from "@/lib/app-config";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,13 @@ export async function GET() {
     });
   }
 
+  const hostname = extractHostname(appConfig.publicUrl);
+  console.log("[api/settings] buscando tenant_domain:", hostname);
+
   const { data, error } = await supabase
     .from("app_settings")
     .select("*")
-    .order("updated_at", { ascending: false })
-    .limit(1)
+    .eq("tenant_domain", hostname)
     .maybeSingle();
 
   if (error) {
