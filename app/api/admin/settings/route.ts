@@ -35,6 +35,7 @@ function cleanText(value: unknown, fallback = "") {
 function normalizePayload(payload: SettingsPayload) {
   return {
     id: cleanText(payload.id),
+    tenantDomain: cleanText(payload.tenantDomain),
     appName: cleanText(payload.appName),
     appShortName: cleanText(payload.appShortName),
     appDescription: cleanText(payload.appDescription),
@@ -88,13 +89,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const hostname = extractHostname(appConfig.publicUrl);
   const settings = normalizePayload(payload);
   const row = appSettingsToRow(settings);
   const query = settings.id
     ? supabase.from("app_settings").update(row).eq("id", settings.id)
     : supabase
         .from("app_settings")
-        .upsert({ ...row, singleton_key: true }, { onConflict: "singleton_key" });
+        .upsert({ ...row, tenant_domain: hostname }, { onConflict: "tenant_domain" });
 
   const { data, error } = await query.select("*").single();
 
