@@ -85,6 +85,29 @@ Recomendação:
 - documentar claramente;
 - futuramente unificar a fonte do App ID.
 
+**Atualização (2026-07-01):** o `components/notification-vip-banner.tsx` (banner "Clube
+VIP") checa "existe App ID" usando a mesma constante client-side que o
+`onesignal-initializer.tsx` já usava (`NEXT_PUBLIC_ONESIGNAL_APP_ID` via
+`appConfigClient.oneSignalAppId`), e não `settings.oneSignalAppId` do banco — para não
+reabrir essa divergência nem depender de uma fonte diferente da que o SDK foi de fato
+inicializado com.
+
+### 4.1.1 Remoção do prompt automático (`Slidedown.promptPush`)
+
+O `onesignal-initializer.tsx` disparava automaticamente `OneSignal.Slidedown.promptPush()`
+assim que o `OneSignal.init()` resolvia, abrindo o prompt nativo do navegador sem nenhum
+aquecimento prévio. Essa chamada foi removida (2026-07-01). A ativação de notificações
+agora acontece via banner "Clube VIP" (`components/notification-vip-banner.tsx`, renderizado
+em `app/layout.tsx` para todas as rotas exceto `/admin/**`), que chama
+`OneSignal.Notifications.requestPermission()` somente quando o usuário clica em "Ativar
+notificações". O restante da inicialização do OneSignal (logs de diagnóstico, listener de
+`PushSubscription.change`, sincronização com `/api/push/subscribe`) não foi alterado.
+
+O botão manual pré-existente em `components/notification-button.tsx` (dentro do `<details>`
+"Notificações" na página principal) continua usando `Slidedown.promptPush({ force: true })`
+e não foi alterado — não é um prompt automático ao carregar, ficou fora do escopo desta
+mudança.
+
 ---
 
 ### 4.2 Service Workers duplicados

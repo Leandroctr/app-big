@@ -112,6 +112,10 @@ Checklist:
 - ativar notificação no navegador;
 - enviar push teste.
 
+> Desde 2026-07-01, a ativação no navegador acontece via banner "Clube VIP" no topo do
+> app (não mais via prompt automático ao carregar). O banner só aparece se
+> `notificationsEnabled` estiver ligado no admin e o App ID estiver configurado.
+
 ---
 
 ## 7. Painel Admin

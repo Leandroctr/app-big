@@ -91,9 +91,6 @@ export function OneSignalInitializer() {
         console.log("[OS] Already subscribed — syncing to API.");
         void sendSubscription(currentId);
       }
-
-      console.log("[OS] Calling Slidedown.promptPush().");
-      void OneSignal.Slidedown.promptPush();
     }).catch((error: unknown) => {
       console.error("[OS] init() FAILED.");
       console.error("[OS] Error:", error);
