@@ -10,12 +10,10 @@ type LoginPageProps = {
   }>;
 };
 
-// Tenta autenticar via Supabase Auth (e-mail/senha). Nao verifica admin_users
-// nesta etapa — essa tabela ainda nao existe no banco e os guards novos
-// (getCurrentAdmin/requireSuperAdmin/requireTenantAccess) ainda nao estao
-// conectados a nenhuma rota. Aqui so provamos a identidade Supabase; a
-// checagem de papel/tenant fica para a etapa em que admin_users existir e
-// os guards forem de fato ligados.
+// Tenta autenticar via Supabase Auth (e-mail/senha). So prova a identidade
+// junto ao Supabase Auth — a checagem de papel/tenant (admin_users,
+// admin_tenant_access) e feita pelo guard de cada pagina/rota
+// (requireTenantAccess()/requireSuperAdmin()), nao aqui.
 async function tryLoginWithSupabaseAuth(email: string, password: string) {
   const supabase = await createSupabaseSessionClient();
 
@@ -43,11 +41,13 @@ async function login(formData: FormData) {
   const supabaseOk = await tryLoginWithSupabaseAuth(email, password);
 
   if (supabaseOk) {
-    // Apenas prepara/mantem a sessao Supabase Auth (cookies sb-*) para uso
-    // futuro. Nao concede acesso ao admin por si so nesta fase: admin_users
-    // ainda nao existe no banco, entao nao ha como verificar papel/tenant
-    // aqui. O acesso continua exigindo o login legado logo abaixo.
+    // Sessao Supabase Auth criada (cookies sb-*). /admin, /admin/settings e
+    // /admin/administradores ja usam requireTenantAccess()/requireSuperAdmin(),
+    // entao essa sessao real basta para entrar — nao precisa (nem deve)
+    // passar pelo cookie legado. Quem nao tiver linha em admin_users (ou
+    // estiver inativo) e barrado pelo proprio guard de /admin, nao aqui.
     logServerInfo("admin_login_supabase_auth_ok", { email });
+    redirect("/admin");
   }
 
   if (!validateAdminCredentials(email, password)) {

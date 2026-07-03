@@ -527,6 +527,76 @@ a API do OneSignal.
 auditoria manual final (etapa 11) antes de considerar a etapa 10 do
 plano totalmente concluída.
 
+### 6.11. Auditoria final, commit, push e validação em produção (2026-07-03)
+
+Auditoria manual (etapa 11) concluída com sucesso — mapa de guards
+conferido rota a rota, buscas por `isAdminAuthenticated`/
+`validateAdminCredentials`/`createAdminSession`/`requireTenantAccess`/
+`requireSuperAdmin` no repo inteiro, e confirmação de que
+`push_subscriptions`/`push_campaigns`/`app_settings` seguiam intactos.
+
+Commit `0aaca27 feat: add tenant-aware admin authentication` criado
+isolando exatamente os 21 arquivos desta frente, sem misturar o WIP
+pré-existente do install flow (`AGENTS.md`, `CLAUDE.md`, `app/layout.tsx`,
+`docs/PWA_INSTALL_EXPERIENCE.md`, `components/pwa-install-flow.tsx`,
+`public/pwa-install/` ficaram de fora do stage). Push feito para
+`origin/main` (fast-forward, sem divergência). Deploy automático da
+Vercel (webhook GitHub→Vercel) confirmado `READY` em produção
+(`pwa.app-bigpix.com`), validado com os mesmos testes básicos já feitos
+localmente: login legado, login Supabase Auth, `/admin`,
+`/admin/settings` (só leitura), `/admin/administradores`, bloqueio da
+sessão legada em `/admin/administradores`, e `/api/settings` público
+com `source: "database"`.
+
+### 6.12. Correção de UX: login Supabase Auth redireciona direto (2026-07-03)
+
+**Problema encontrado após a validação em produção:** o login com
+Supabase Auth criava a sessão real corretamente, mas a tela continuava
+mostrando o erro do fallback legado (porque o fluxo sempre caía na
+checagem de `validateAdminCredentials()` em seguida, mesmo já tendo
+autenticado via Supabase). Como `/admin`, `/admin/settings` e
+`/admin/administradores` já usam `requireTenantAccess()`/
+`requireSuperAdmin()`, essa segunda checagem era desnecessária.
+
+**Correção:** único arquivo alterado, `app/admin/login/page.tsx`. O
+branch de sucesso do Supabase Auth agora faz `redirect("/admin")`
+diretamente, sem cair no bloco do fallback legado:
+
+```ts
+if (supabaseOk) {
+  logServerInfo("admin_login_supabase_auth_ok", { email });
+  redirect("/admin");
+}
+
+if (!validateAdminCredentials(email, password)) {
+  redirect("/admin/login?error=1");
+}
+
+logServerWarn("admin_login_legacy_fallback_used", { email });
+await createAdminSession();
+redirect("/admin");
+```
+
+`createAdminSession()` continua sendo alcançável **somente** depois de
+`validateAdminCredentials()` passar — nada mudou nessa garantia, só o
+caminho de sucesso do Supabase deixou de "cair" nessa checagem.
+
+**Testes locais (`npm run dev`):**
+- Login Supabase Auth (super_admin) → redireciona direto para `/admin`,
+  **sem** mostrar a tela de erro.
+- `/admin` carrega com link "Administradores" visível.
+- `/admin/administradores` carrega normalmente.
+- `createAdminSession()` não é chamado nesse caminho — confirmado por
+  leitura do código (branch `if (supabaseOk)` termina em `redirect()`
+  antes de qualquer referência a `createAdminSession()`) e por
+  comportamento (login direto sem erro só é possível vindo desse branch,
+  já que a senha real do Supabase nunca bate com `ADMIN_PASSWORD`).
+- Login legado (`admin@admin.com`) → continua entrando em `/admin`
+  normalmente, **sem** o link "Administradores".
+- Sessão legada em `/admin/administradores` → continua bloqueada,
+  redireciona para `/admin/login`.
+- `npm run lint`/`npm run build`: limpos, mesmo warning pre-existente.
+
 ---
 
 ## 7. Micro-etapas
