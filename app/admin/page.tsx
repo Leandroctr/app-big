@@ -4,6 +4,8 @@ import { AdminPushForm } from "@/components/admin-push-form";
 import { clearAdminSession, isAdminAuthenticated } from "@/lib/admin-auth";
 import { appConfig } from "@/lib/app-config";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseSessionClient } from "@/lib/supabase/admin-session";
+import { requireTenantAccess } from "@/lib/admin-identity.server";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +43,36 @@ async function logout() {
   "use server";
 
   await clearAdminSession();
+
+  // Encerra tambem uma eventual sessao Supabase Auth (cookies sb-*). Sem
+  // isso, quem entrou pelo login real continuaria com acesso a /admin
+  // depois de clicar em "Sair", ja que o guard abaixo agora aceita essa
+  // sessao independentemente do cookie legado.
+  const sessionClient = await createSupabaseSessionClient();
+
+  if (sessionClient) {
+    await sessionClient.auth.signOut();
+  }
+
   redirect("/admin/login");
 }
 
 export default async function AdminPage() {
-  if (!(await isAdminAuthenticated())) {
+  // Guard real por tenant, com fallback legado mantido nesta fase:
+  // - currentAdmin: sessao Supabase Auth valida (super_admin sempre passa;
+  //   admin precisa de admin_tenant_access ativo para o tenant deste deploy).
+  // - hasLegacySession: cookie antigo admin_session, ainda aceito para nao
+  //   travar o acesso principal enquanto a migracao esta em andamento.
+  // Nenhum dos dois concede a tela /admin/administradores por si so — isso
+  // depende exclusivamente de currentAdmin.role === "super_admin".
+  const currentAdmin = await requireTenantAccess();
+  const hasLegacySession = await isAdminAuthenticated();
+
+  if (!currentAdmin && !hasLegacySession) {
     redirect("/admin/login");
   }
+
+  const isSuperAdmin = currentAdmin?.role === "super_admin";
 
   const supabase = createSupabaseAdminClient();
   let totalSubscriptions = 0;
@@ -97,6 +122,11 @@ export default async function AdminPage() {
             <h1 className="text-2xl font-black tracking-normal">Painel Admin</h1>
           </div>
           <div className="flex items-center gap-4">
+            {isSuperAdmin ? (
+              <Link className="text-sm font-bold text-slate-700" href="/admin/administradores">
+                Administradores
+              </Link>
+            ) : null}
             <Link className="text-sm font-bold text-slate-700" href="/admin/settings">
               Configuracoes
             </Link>

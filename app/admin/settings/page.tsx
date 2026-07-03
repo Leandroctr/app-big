@@ -2,12 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminSettingsForm } from "@/components/admin-settings-form";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { requireTenantAccess } from "@/lib/admin-identity.server";
 import { getAppSettings } from "@/lib/app-settings.server";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
-  if (!(await isAdminAuthenticated())) {
+  // Mesmo padrao de guard adotado em /admin: sessao Supabase real
+  // (checada por tenant) OU cookie legado, qualquer um dos dois libera
+  // o acesso nesta fase de transicao.
+  const currentAdmin = await requireTenantAccess();
+  const hasLegacySession = await isAdminAuthenticated();
+
+  if (!currentAdmin && !hasLegacySession) {
     redirect("/admin/login");
   }
 

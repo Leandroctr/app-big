@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { appSettingsToRow, extractHostname, settingsRowToAppSettings } from "@/lib/app-settings";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { requireTenantAccess } from "@/lib/admin-identity.server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { appConfig } from "@/lib/app-config";
 
@@ -62,7 +63,13 @@ function normalizePayload(payload: SettingsPayload) {
 }
 
 export async function POST(request: Request) {
-  if (!(await isAdminAuthenticated())) {
+  // Mesmo padrao de guard adotado em /admin e /admin/settings: sessao
+  // Supabase real (checada por tenant) OU cookie legado, qualquer um dos
+  // dois libera o acesso nesta fase de transicao.
+  const currentAdmin = await requireTenantAccess();
+  const hasLegacySession = await isAdminAuthenticated();
+
+  if (!currentAdmin && !hasLegacySession) {
     return NextResponse.json(
       { ok: false, error: "Nao autenticado." },
       { status: 401 },
@@ -90,6 +97,24 @@ export async function POST(request: Request) {
   }
 
   const hostname = extractHostname(appConfig.publicUrl);
+
+  // Bloqueio de seguranca: "localhost" nao e um tenant real. Sem isso,
+  // qualquer teste local de salvamento grava uma linha em app_settings no
+  // mesmo Supabase compartilhado de producao (ja aconteceu uma vez, ver
+  // docs/ADMIN_AUTH_PLAN.md, secao de incidente). Testes locais de leitura
+  // continuam funcionando normalmente (GET /api/settings nao e afetado).
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Gravacao de settings bloqueada para tenant_domain 'localhost'. " +
+          "Configure NEXT_PUBLIC_PUBLIC_URL com um dominio real (ou de staging) para testar o salvamento.",
+      },
+      { status: 403 },
+    );
+  }
+
   const settings = normalizePayload(payload);
   const row = appSettingsToRow(settings);
   const query = settings.id

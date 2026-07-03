@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { requireTenantAccess } from "@/lib/admin-identity.server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import sharp from "sharp";
 
@@ -101,7 +102,14 @@ async function optimizeImage(
 export async function POST(request: Request) {
   console.log("[UPLOAD] Iniciando upload...");
 
-  if (!(await isAdminAuthenticated())) {
+  // Mesmo padrao de guard adotado em /admin, /admin/settings e
+  // /api/admin/settings: sessao Supabase real (checada por tenant) OU
+  // cookie legado, qualquer um dos dois libera o acesso nesta fase de
+  // transicao.
+  const currentAdmin = await requireTenantAccess();
+  const hasLegacySession = await isAdminAuthenticated();
+
+  if (!currentAdmin && !hasLegacySession) {
     console.log("[UPLOAD] Erro: não autenticado");
     return NextResponse.json(
       { ok: false, error: "Nao autenticado." },
