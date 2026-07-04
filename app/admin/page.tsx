@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminPushForm } from "@/components/admin-push-form";
 import { clearAdminSession, isAdminAuthenticated } from "@/lib/admin-auth";
 import { appConfig } from "@/lib/app-config";
+import { getAppSettings } from "@/lib/app-settings.server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { createSupabaseSessionClient } from "@/lib/supabase/admin-session";
 import { requireTenantAccess } from "@/lib/admin-identity.server";
@@ -75,6 +76,7 @@ export default async function AdminPage() {
   const isSuperAdmin = currentAdmin?.role === "super_admin";
 
   const supabase = createSupabaseAdminClient();
+  const settings = await getAppSettings();
   let totalSubscriptions = 0;
   let subscriptions: SubscriptionRow[] = [];
   let campaigns: CampaignRow[] = [];
@@ -86,15 +88,18 @@ export default async function AdminPage() {
     const [countResult, subscriptionsResult, campaignsResult] = await Promise.all([
       supabase
         .from("push_subscriptions")
-        .select("*", { count: "exact", head: true }),
+        .select("*", { count: "exact", head: true })
+        .eq("tenant_domain", settings.tenantDomain),
       supabase
         .from("push_subscriptions")
         .select("id, onesignal_id, permission_status, device_type, created_at, last_seen_at")
+        .eq("tenant_domain", settings.tenantDomain)
         .order("created_at", { ascending: false })
         .limit(10),
       supabase
         .from("push_campaigns")
         .select("id, title, target_type, status, recipient_count, created_at, sent_at")
+        .eq("tenant_domain", settings.tenantDomain)
         .order("created_at", { ascending: false })
         .limit(10),
     ]);

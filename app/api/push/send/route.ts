@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     .from("push_subscriptions")
     .select("onesignal_id")
     .eq("permission_status", "granted")
+    .eq("tenant_domain", settings.tenantDomain)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -133,6 +134,8 @@ export async function POST(request: Request) {
       target_type: data.targetType,
       status: "created",
       recipient_count: targetCount,
+      tenant_domain: settings.tenantDomain,
+      onesignal_app_id: settings.oneSignalAppId || null,
     })
     .select("id")
     .single();
