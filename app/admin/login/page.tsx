@@ -7,6 +7,7 @@ import { logServerInfo, logServerWarn } from "@/lib/logger/server";
 type LoginPageProps = {
   searchParams: Promise<{
     error?: string;
+    password_reset?: string;
   }>;
 };
 
@@ -62,6 +63,7 @@ async function login(formData: FormData) {
 export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const hasError = params.error === "1";
+  const hasPasswordReset = params.password_reset === "1";
 
   return (
     <main
@@ -108,6 +110,12 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
           >
             Entrar
           </button>
+
+          {hasPasswordReset ? (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+              Senha redefinida com sucesso. Faca login novamente.
+            </p>
+          ) : null}
 
           {hasError ? (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800">

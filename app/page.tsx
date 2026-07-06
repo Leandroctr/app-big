@@ -106,6 +106,15 @@ export default function Home() {
   );
 
   useEffect(() => {
+    // Supabase Auth envia o link de recuperacao de senha do admin para a raiz
+    // do dominio (Site URL), com o token no hash (#access_token=...&type=recovery).
+    // Sem este desvio, o launcher ignoraria o hash e redirecionaria para
+    // NEXT_PUBLIC_PLATFORM_URL, perdendo o token. Ver app/admin/reset-password.
+    if (window.location.hash.includes("type=recovery")) {
+      window.location.replace(`/admin/reset-password${window.location.hash}`);
+      return;
+    }
+
     let isActive = true;
     let validationTimer: number | undefined;
     let redirectTimer: number | undefined;
