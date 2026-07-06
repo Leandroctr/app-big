@@ -599,6 +599,90 @@ caminho de sucesso do Supabase deixou de "cair" nessa checagem.
 
 ---
 
+### 6.13. Validação em produção do recovery e recriação do super_admin (2026-07-06)
+
+**Escopo confirmado antes desta seção:** projeto PWA/front novo, repo
+`Leandroctr/app-big`, domínio `https://pwa.app-bigpix.com`. Não relacionado a
+`1chat.digital`.
+
+**1. Fluxo de recovery publicado e validado em produção.** Commit
+`b305ac5 feat: add admin password recovery flow` (arquivos:
+`app/admin/reset-password/page.tsx` novo, `app/page.tsx` e
+`app/admin/login/page.tsx` alterados) — push para `origin/main`, deploy
+automático da Vercel confirmado `READY` em produção.
+
+**2. Rota validada em produção:** `GET https://pwa.app-bigpix.com/admin/reset-password`
+→ `200`, `X-Matched-Path: /admin/reset-password`, corpo confirmado com o
+texto "Definir nova senha".
+
+**3. Recovery do Supabase Auth funcionando ponta a ponta:** link de
+recuperação com token → `app/page.tsx` detecta `type=recovery` no hash e
+redireciona para `/admin/reset-password` preservando o token → tela captura
+a sessão de recovery, usuário define nova senha → `supabase.auth.updateUser()`
+→ `signOut()` da sessão de recovery → redireciona para `/admin/login?password_reset=1`.
+
+**4. Incidente operacional:** o usuário `leandro.moline@gmail.com` foi
+deletado e recriado manualmente no Supabase Auth (ação do próprio usuário,
+fora deste agente). A recriação gerou um novo `auth_user_id`:
+`e529b10f-7b41-4064-be1b-2a3eead3fc1d` (diferente do UID original registrado
+na seção 6.3, `7b3dc212-c6f1-4b42-8db0-887b146d31c4`).
+
+**5. Causa raiz:** login por e-mail/senha voltou a funcionar normalmente
+(e-mail confirmado, login recente em `auth.users`), mas a tela de
+super_admin não aparecia porque `public.admin_users` não tinha nenhuma linha
+apontando para o novo `auth_user_id` — a linha antiga (id
+`e8acfa19-dd2a-4bb2-a5f2-730fcea3e6a6`, seção 6.3) ficou órfã, vinculada ao
+UID antigo que deixou de existir em `auth.users`. `getCurrentAdmin()`
+(`lib/admin-identity.server.ts`) faz o lookup por `auth_user_id`, então
+nenhuma linha era encontrada — comportamento esperado do código, não um bug.
+
+**6. Correção operacional (feita manualmente pelo usuário no SQL Editor do
+Supabase, sem participação deste agente — nenhum SQL rodado por mim, nenhuma
+alteração de usuário feita por mim):** criada nova linha em
+`public.admin_users` vinculando:
+- `auth_user_id = e529b10f-7b41-4064-be1b-2a3eead3fc1d`
+- `email = leandro.moline@gmail.com`
+- `name = Leandro Moline`
+- `role = super_admin`
+- `active = true`
+
+**7. Resultado validado em produção:**
+- Login por e-mail/senha funciona no BigPix.
+- `/admin` abre corretamente, com link "Administradores" visível.
+- `/admin/administradores` abre corretamente para o super_admin.
+- Gestão de administradores (criação, papel, acesso por tenant) validada em
+  produção no app-big.
+
+**8. Decisão arquitetural — BigPix/app-big não é tenant mestre:** a tela
+`/admin/administradores` e toda a gestão de `super_admin`/`admin` ficam
+**somente** no BigPix/app-big. A autoridade de acesso vem do papel do usuário
+(`admin_users.role`) e das permissões por `tenant_domain`
+(`admin_tenant_access`), não do deploy em si — qualquer tenant poderia, em
+tese, hospedar essa tela, mas a decisão operacional é concentrá-la só aqui.
+
+**9. Decisão arquitetural — replicação futura para os outros PWAs:** os
+outros PWAs (`app-megabingo7`, `app-obapremios`, `app-premiosaovivo`,
+`app-pixkeno`, `app-superkeno`) **não** devem receber a tela
+`/admin/administradores` nem a gestão de administradores. O que será
+replicado a eles é apenas a autenticação por e-mail/senha via Supabase Auth
+para acesso ao painel admin do próprio tenant (equivalente ao que já existe
+em `/admin/login` e ao guard `requireTenantAccess()` do app-big). Um `admin`
+comum acessa somente os tenants liberados em `admin_tenant_access`; o
+`super_admin` continua gerenciando essas permissões exclusivamente pelo
+BigPix/app-big.
+
+**10. Risco operacional registrado:** se um usuário do Supabase Auth for
+deletado e recriado (por qualquer motivo — reset manual, migração,
+recuperação de conta), o `auth_user_id` muda e a linha correspondente em
+`public.admin_users` fica órfã, mesmo que o e-mail seja idêntico. **É
+obrigatório**, nesse cenário, atualizar o `auth_user_id` da linha existente
+(ou criar uma nova linha e desativar/remover a órfã) em `public.admin_users`
+antes que o usuário volte a ter acesso ao papel de admin/super_admin — o
+login em si funciona normalmente (Supabase Auth), mas o vínculo de papel não
+segue automaticamente por e-mail, só por `auth_user_id`.
+
+---
+
 ## 7. Micro-etapas
 
 - [x] 1. Criar `docs/ADMIN_AUTH_PLAN.md`.
