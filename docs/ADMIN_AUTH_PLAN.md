@@ -758,7 +758,7 @@ rodada por regra explícita (não criar usuário, não rodar SQL manual).
 
 ---
 
-### 6.15. Replicação da autenticação Supabase Auth para PixKeno e SuperKeno (2026-07-06)
+### 6.15. Replicação da autenticação Supabase Auth para os 5 tenants (2026-07-06)
 
 **Escopo da replicação (decisão confirmada, seção 6.13, item 9):** os demais
 PWAs recebem **somente** login por e-mail/senha via Supabase Auth +
@@ -793,13 +793,58 @@ administradores continua exclusiva do app-big/BigPix.
   `/admin/login` (`200`), `/admin`/`/admin/settings` (`307`),
   `/admin/administradores` (`404`, confirmado inexistente).
 
-**Pendente (fora desta rodada, não executado):** replicar o mesmo padrão para
-`app-megabingo7`, `app-obapremios` e `app-premiosaovivo` — únicos tenants
-ainda sem `requireTenantAccess()`, seguindo o mesmo processo (diagnóstico
-Git → comparação com PixKeno/SuperKeno → implementação → diff → aprovação →
-commit → push → validação de deploy). Login Supabase Auth end-to-end (com
-usuário real logando) ainda não foi exercitado em nenhum dos dois tenants
-replicados — só o comportamento de guard sem sessão foi validado via `curl`.
+**MegaBingo7** — repo `Leandroctr/app-megabingo7`:
+- Commit `46a5c15 feat: add Supabase admin auth to MegaBingo7`, push feito,
+  deploy automático da Vercel confirmado `READY` em produção
+  (`pwa.app-megabingo7.com`).
+- Validado em produção: `/admin/login` (`200`), `/admin`/`/admin/settings`
+  (`307`), `/admin/administradores` (`404`, confirmado inexistente).
+- Observação: repositório tinha um arquivo `.env.vercel` não rastreado
+  (pendência conhecida desde `HANDOFF_CREATE_PIXKENO_TENANT.md`) — verificado
+  só por metadados (tamanho/data), nunca lido, nunca adicionado ao commit.
+
+**ObaPrêmios** — repo `Leandroctr/app-obapremios`:
+- Commit `020368a feat: add Supabase admin auth to ObaPremios`, push feito,
+  deploy automático da Vercel confirmado `READY` em produção
+  (`pwa.app-obapremios.com`).
+- Validado em produção: `/admin/login` (`200`), `/admin`/`/admin/settings`
+  (`307`), `/admin/administradores` (`404`, confirmado inexistente).
+
+**PrêmiosAoVivo** — repo `Leandroctr/app-premiosaovivo`:
+- Commit `96e4548 feat: add Supabase admin auth to PremiosAoVivo`, push feito,
+  deploy automático da Vercel confirmado `READY` em produção
+  (`pwa.app-premiosaovivo.com`).
+- Validado em produção: `/admin/login` (`200`), `/admin`/`/admin/settings`
+  (`307`), `/admin/administradores` (`404`, confirmado inexistente).
+- Observação: repositório tinha WIP pré-existente extra em
+  `app/api/settings/route.ts`, `lib/app-settings.server.ts` e
+  `lib/logger/server.ts` (parte do WIP de logging/instalação, já documentado
+  em `HANDOFF_CREATE_PIXKENO_TENANT.md`) — confirmado inofensivo por leitura
+  de diff, mantido intocado, fora do commit desta etapa.
+
+**Status desta etapa:** os 6 tenants (app-big + os 5 acima) estão publicados
+em produção com o mesmo código-base de autenticação (login Supabase Auth +
+`requireTenantAccess()` + fallback legado), guard confirmado via `curl` sem
+sessão em todos, e nenhum dos 5 tenants replicados expõe
+`/admin/administradores` ou `/api/admin/admins*`. **Isso cobre código, deploy
+e guard — não cobre teste ponta a ponta com usuário real.**
+
+**Pendência explícita (não executada nesta etapa, nem em nenhuma anterior):**
+ainda falta validar o fluxo completo, com um usuário real, em cada um dos 5
+tenants replicados:
+1. Criar ou vincular um administrador pelo painel do app-big/BigPix
+   (`/admin/administradores`), concedendo `admin_tenant_access` para o
+   `tenant_domain` do tenant em questão.
+2. Logar em `/admin/login` daquele tenant especificamente (não do BigPix)
+   com as credenciais Supabase Auth desse administrador.
+3. Confirmar que `/admin` e `/admin/settings` carregam normalmente para esse
+   usuário nesse tenant.
+4. Confirmar que um `admin` **sem** `admin_tenant_access` ativo para aquele
+   `tenant_domain` é bloqueado, mesmo com login Supabase Auth válido.
+
+Até essa validação ser feita tenant a tenant, a replicação deve ser
+considerada **completa em código/deploy/guard**, mas **não completamente
+validada em uso real**.
 
 ---
 
@@ -827,10 +872,16 @@ replicados — só o comportamento de guard sem sessão foi validado via `curl`.
 - [ ] 15. Desligar o fallback legado (etapa separada).
 - [ ] 16. Atualizar `AGENTS.md`/`CLAUDE.md`/`docs/AUDIT_REPORT.md`/`docs/TENANT_DOMAIN_AUDIT.md`.
 - [ ] 17. (fora desta rodada) Avaliar `middleware.ts` como camada extra.
-- [ ] 18. Replicar autenticacao Supabase Auth (sem tela de administradores)
-      para os outros 5 tenants — ver secao 6.15. **Concluido:** PixKeno
-      (commit `1de3d4d`), SuperKeno (commit `32196d2`). **Pendente:**
-      app-megabingo7, app-obapremios, app-premiosaovivo.
+- [x] 18. Replicar autenticacao Supabase Auth (sem tela de administradores)
+      para os outros 5 tenants — ver secao 6.15. **Concluido em
+      codigo/deploy/guard** nos 5: PixKeno (`1de3d4d`), SuperKeno
+      (`32196d2`), MegaBingo7 (`46a5c15`), ObaPremios (`020368a`),
+      PremiosAoVivo (`96e4548`) — todos publicados, guard validado via
+      `curl` sem sessao, nenhum com `/admin/administradores` ou
+      `/api/admin/admins*`. **Pendente:** teste ponta a ponta com usuario
+      real (criar/vincular admin pelo BigPix, liberar tenant_domain, logar
+      no PWA correspondente, confirmar acesso e confirmar bloqueio sem
+      permissao) em cada um dos 5 tenants.
 
 ---
 
