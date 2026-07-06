@@ -758,6 +758,51 @@ rodada por regra explícita (não criar usuário, não rodar SQL manual).
 
 ---
 
+### 6.15. Replicação da autenticação Supabase Auth para PixKeno e SuperKeno (2026-07-06)
+
+**Escopo da replicação (decisão confirmada, seção 6.13, item 9):** os demais
+PWAs recebem **somente** login por e-mail/senha via Supabase Auth +
+`requireTenantAccess()` para o próprio tenant — **nunca** a tela
+`/admin/administradores`, as rotas `/api/admin/admins*`, os componentes
+`admin-admins-*` ou `lib/admin-directory.server.ts`. Gestão de
+administradores continua exclusiva do app-big/BigPix.
+
+**Arquivos replicados (idênticos byte a byte ao app-big) em cada repositório:**
+- Criados: `lib/supabase/admin-session.ts`, `lib/admin-identity.server.ts`.
+- Alterados: `app/admin/login/page.tsx` (branch Supabase Auth com redirect
+  direto no sucesso), `app/admin/page.tsx` (guard `requireTenantAccess()` OU
+  fallback legado; `signOut()` da sessão Supabase no logout; **sem** link
+  "Administradores"), `app/admin/settings/page.tsx`, `app/api/admin/settings/route.ts`
+  (guard + bloqueio de gravação para `tenant_domain = "localhost"`),
+  `app/api/admin/upload/route.ts`, `app/api/push/send/route.ts`.
+  Dependência `@supabase/ssr` adicionada em `package.json`/`package-lock.json`
+  (via `npm install`, sem edição manual do lockfile).
+
+**PixKeno** — repo `Leandroctr/app-pixkeno`:
+- Commit `1de3d4d feat: add Supabase admin auth to PixKeno`, push feito, deploy
+  automático da Vercel confirmado `READY` em produção (`pwa.app-pixkeno.com`).
+- Validado em produção: `/admin/login` (`200`), `/admin` e `/admin/settings`
+  (`307` sem sessão — guard funcionando), `/admin/administradores` (`404`,
+  confirmado inexistente).
+
+**SuperKeno** — repo `Leandroctr/app-superkeno`:
+- Commit `32196d2 feat: add Supabase admin auth to SuperKeno`, push feito,
+  deploy automático da Vercel confirmado `READY` em produção
+  (`pwa.app-superkeno.com`).
+- Validado em produção: mesmos resultados de rota que o PixKeno —
+  `/admin/login` (`200`), `/admin`/`/admin/settings` (`307`),
+  `/admin/administradores` (`404`, confirmado inexistente).
+
+**Pendente (fora desta rodada, não executado):** replicar o mesmo padrão para
+`app-megabingo7`, `app-obapremios` e `app-premiosaovivo` — únicos tenants
+ainda sem `requireTenantAccess()`, seguindo o mesmo processo (diagnóstico
+Git → comparação com PixKeno/SuperKeno → implementação → diff → aprovação →
+commit → push → validação de deploy). Login Supabase Auth end-to-end (com
+usuário real logando) ainda não foi exercitado em nenhum dos dois tenants
+replicados — só o comportamento de guard sem sessão foi validado via `curl`.
+
+---
+
 ## 7. Micro-etapas
 
 - [x] 1. Criar `docs/ADMIN_AUTH_PLAN.md`.
@@ -782,7 +827,10 @@ rodada por regra explícita (não criar usuário, não rodar SQL manual).
 - [ ] 15. Desligar o fallback legado (etapa separada).
 - [ ] 16. Atualizar `AGENTS.md`/`CLAUDE.md`/`docs/AUDIT_REPORT.md`/`docs/TENANT_DOMAIN_AUDIT.md`.
 - [ ] 17. (fora desta rodada) Avaliar `middleware.ts` como camada extra.
-- [ ] 18. (fora desta rodada) Decidir estrategia de replicacao para os outros 5 tenants.
+- [ ] 18. Replicar autenticacao Supabase Auth (sem tela de administradores)
+      para os outros 5 tenants — ver secao 6.15. **Concluido:** PixKeno
+      (commit `1de3d4d`), SuperKeno (commit `32196d2`). **Pendente:**
+      app-megabingo7, app-obapremios, app-premiosaovivo.
 
 ---
 
