@@ -683,6 +683,81 @@ segue automaticamente por e-mail, só por `auth_user_id`.
 
 ---
 
+### 6.14. Vincular usuário existente do Supabase Auth em `admin_users` (2026-07-06)
+
+**Problema:** `POST /api/admin/admins` sempre chamava
+`supabase.auth.admin.createUser()`. Quando o e-mail já existia no Supabase
+Auth (situação legítima e esperada — ver seção 6.13, incidente do
+`auth_user_id` órfão), o Supabase recusava corretamente a duplicata, mas o
+endpoint tratava isso como erro genérico 500, sem diferenciar de qualquer
+outra falha. Não havia caminho pela UI para vincular um `auth.users` já
+existente a `public.admin_users` — só via SQL manual.
+
+**Decisão arquitetural confirmada:** um e-mail existe uma única vez no
+Supabase Auth; uma linha existe em `public.admin_users`; o mesmo admin pode
+ter múltiplos tenants via `public.admin_tenant_access`. Nunca criar um
+usuário Auth duplicado por PWA.
+
+**Regra de UX adotada no formulário (`components/admin-admins-form.tsx`):**
+senha preenchida → criar novo usuário Auth; senha vazia → vincular usuário já
+existente no Supabase Auth. Texto explicativo adicionado no topo do
+formulário: "Preencha a senha para criar um novo usuário. Deixe a senha
+vazia para vincular um usuário que já existe no Supabase Auth." O campo de
+senha deixou de ser `required` (mantém `minLength={12}`, que só é avaliado
+pelo navegador quando o campo não está vazio).
+
+**Comportamento do backend (`app/api/admin/admins/route.ts`):**
+
+| Caso | Condição | Resultado |
+|---|---|---|
+| A | E-mail novo + senha preenchida | `createUser()` + INSERT em `admin_users` (comportamento original, inalterado) |
+| B | E-mail já existe no Auth, sem linha em `admin_users`, senha vazia | Busca o `auth_user_id` existente (`findAuthUserByEmail`) e cria **só** a linha em `admin_users` — sem chamar `createUser()`. Resposta `ok: true, linked: true` |
+| C | E-mail não existe no Auth, senha vazia | `400`: "Informe uma senha para criar um novo usuario ou use um e-mail ja existente no Supabase Auth." |
+| D | E-mail já existe no Auth, senha preenchida | `createUser()` retorna erro; detectado especificamente por `error.code` (`email_exists`/`user_already_exists`, códigos documentados do `@supabase/auth-js` instalado, versão `2.108.2`) → `409`: "Este e-mail ja existe no Supabase Auth. Para vincula-lo, envie o formulario sem senha." Preferência confirmada pelo usuário: mensagem clara, sem tentar adivinhar/auto-vincular nesse caminho. |
+| — | `auth_user_id` (novo ou existente) já tem linha em `admin_users` | `409`: "Este e-mail ja e administrador. Edite as permissoes na tabela abaixo." — checagem comum aos casos A/B, evita duplicar `admin_users` para o mesmo `auth_user_id` |
+
+**Helpers novos em `lib/admin-directory.server.ts`:**
+- `findAuthUserByEmail(email)`: pagina `supabase.auth.admin.listUsers()` (não
+  existe "getUserByEmail" direto na Admin API) comparando e-mail
+  normalizado em lower-case. Limitado a 10 páginas de 200 (2.000 contas) —
+  premissa de baixo volume documentada no código; painéis administrativos
+  internos, sem cadastro público. Revisar se o volume de contas Auth crescer
+  muito além disso.
+- `getAdminUserByAuthId(authUserId)`: confirma se já existe linha em
+  `admin_users` para aquele `auth_user_id`, reaproveitando o mesmo mapeamento
+  de `listAdminUsers()` (`mapAdminUserRow`, extraído como função privada
+  compartilhada).
+
+**Segurança e diagnóstico:**
+- Nenhuma senha ou token é logado em nenhum caminho.
+- No caminho de criação (Caso A), se o INSERT em `admin_users` falhar depois
+  do `createUser()` ter sucedido, a conta Auth recém-criada é revertida
+  (`deleteUser()`) — comportamento já existente, inalterado.
+- No caminho de vínculo (Caso B), se o INSERT em `admin_users` falhar, a
+  conta Auth **não** é apagada (já existia antes desta requisição) — o erro
+  é logado como `admin_link_admin_user_error` para diagnóstico manual, sem
+  limpeza automática.
+- Busca por e-mail sempre via `createSupabaseAdminClient()` (service role),
+  só no servidor — nunca exposta ao client.
+
+**`app/admin/administradores/page.tsx`:** comentário desatualizado corrigido
+(dizia que `requireSuperAdmin()` sempre retornava `null` porque a migration
+003 estava pendente — não é mais verdade desde a seção 6.3/6.4).
+
+**Testes locais (`npm run dev` não exercitado nesta rodada — ver nota
+abaixo):**
+- `npm run lint` e `npm run build`: limpos, mesmo warning pré-existente e não
+  relacionado (`formatDimension` em `components/admin-settings-form.tsx`).
+
+**Nota:** esta etapa foi implementada e validada por lint/build nesta
+sessão; os 4 casos (A/B/C/D) e a checagem de duplicidade em `admin_users`
+ainda precisam de teste end-to-end contra o banco real (criar novo, vincular
+existente sem linha, tentar duplicar, e-mail inexistente sem senha) antes de
+considerar a etapa totalmente validada em produção — não executado nesta
+rodada por regra explícita (não criar usuário, não rodar SQL manual).
+
+---
+
 ## 7. Micro-etapas
 
 - [x] 1. Criar `docs/ADMIN_AUTH_PLAN.md`.

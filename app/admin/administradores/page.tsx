@@ -8,12 +8,10 @@ import { appConfig } from "@/lib/app-config";
 
 export const dynamic = "force-dynamic";
 
-// Ainda nao ligada ao menu principal do /admin (etapa futura, quando os
-// guards antigos forem trocados). Nesta fase, requireSuperAdmin() sempre
-// retorna null porque admin_users ainda nao existe no banco (migration 003
-// pendente) — ou seja, esta pagina hoje sempre redireciona para o login,
-// mesmo para quem estaria logado como super_admin no futuro. Nao deve ser
-// considerada funcionalmente testada contra banco real ainda.
+// Nao ligada ao menu principal do /admin dos outros PWAs por decisao
+// arquitetural: esta tela existe somente no app-big/BigPix (ver
+// docs/ADMIN_AUTH_PLAN.md, secao 6.13). requireSuperAdmin() protege o
+// acesso; validado em produção contra o banco real.
 export default async function AdminAdministradoresPage() {
   const currentAdmin = await requireSuperAdmin();
 

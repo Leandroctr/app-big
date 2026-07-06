@@ -33,8 +33,8 @@ export function AdminAdminsForm({ tenantDomains }: AdminAdminsFormProps) {
     const name = String(formData.get("name") || "").trim();
     const password = String(formData.get("password") || "");
 
-    if (!email || !password) {
-      setStatus({ type: "error", message: "Preencha e-mail e senha." });
+    if (!email) {
+      setStatus({ type: "error", message: "Preencha o e-mail." });
       return;
     }
 
@@ -66,7 +66,11 @@ export function AdminAdminsForm({ tenantDomains }: AdminAdminsFormProps) {
 
       setStatus({
         type: "success",
-        message: result.warning || `Administrador ${email} criado com sucesso.`,
+        message:
+          result.warning ||
+          (result.linked
+            ? `Administrador ${email} vinculado com sucesso.`
+            : `Administrador ${email} criado com sucesso.`),
       });
       setSelectedTenants([]);
       setRole("admin");
@@ -80,6 +84,11 @@ export function AdminAdminsForm({ tenantDomains }: AdminAdminsFormProps) {
 
   return (
     <form action={createAdmin} className="grid gap-4">
+      <p className="text-sm text-slate-500">
+        Preencha a senha para criar um novo usuario. Deixe a senha vazia para
+        vincular um usuario que ja existe no Supabase Auth.
+      </p>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-slate-700">
           Email
@@ -104,17 +113,18 @@ export function AdminAdminsForm({ tenantDomains }: AdminAdminsFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold text-slate-700">
-          Senha inicial
+          Senha (deixe vazio para vincular)
           <input
             className="min-h-12 rounded-lg border border-slate-200 bg-white px-3 text-base font-normal text-slate-950 outline-none focus:border-slate-400"
             disabled={isSaving}
             minLength={12}
             name="password"
-            required
             type="password"
           />
           <span className="text-xs font-normal text-slate-500">
-            Minimo 12 caracteres. Sem senhas genericas (123456, admin, etc.).
+            Se preenchida: minimo 12 caracteres, sem senhas genericas
+            (123456, admin, etc.). Se vazia: o e-mail precisa ja existir no
+            Supabase Auth.
           </span>
         </label>
 
