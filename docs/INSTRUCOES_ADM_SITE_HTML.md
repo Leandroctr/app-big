@@ -408,7 +408,7 @@ var COLLAPSE_AFTER_MS = 7000;
 | Campo | Quando alterar |
 |---|---|
 | `PWA_URL` | Quando o domínio do PWA mudar |
-| `LOGO_URL` | Quando quiser usar outro logo aprovado para o BigPix |
+| `LOGO_URL` | O valor atual usa um fallback temporário (`https://pwa.app-bigpix.com/icons/icon-192.svg`). Trocar pela URL oficial do logo BigPix quando disponível |
 | `BRAND_NAME` | Quando precisar ajustar o texto alternativo do logo |
 | `COLLAPSE_AFTER_MS` | Para mudar o tempo antes de recolher automaticamente |
 
@@ -451,6 +451,7 @@ Após aplicar o snippet no site principal, avise a equipe responsável para vali
 - Não pedir ativação de notificações neste banner.
 - Não prometer bônus, promoções ou vantagens se a operação não for cumprir essa comunicação.
 - Não usar logo errado.
+- O `LOGO_URL` atual aponta para um fallback temporário do PWA; trocar pela URL oficial do logo BigPix quando disponível.
 - Não copiar este snippet para outros tenants sem trocar URL, logo e nome.
 - Não copiar `sw.js` para o site principal.
 - Não copiar `manifest.webmanifest` para o site principal.
@@ -473,7 +474,8 @@ Para adaptar para outro tenant no futuro:
 4. Ajustar textos somente se a marca pedir, mantendo a promessa real da operação.
 5. Manter o CTA `#006DFF`, salvo decisão de produto diferente.
 6. Não usar logo BigPix nos demais tenants.
-7. Respeitar o branding de cada tenant.
+7. Não reaproveitar o fallback `https://pwa.app-bigpix.com/icons/icon-192.svg` em outros tenants sem conferir o branding.
+8. Respeitar o branding de cada tenant.
 
 Quando o banner for implementado dentro do PWA, o logo deve vir da configuração do painel nesta ordem:
 
@@ -481,4 +483,4 @@ Quando o banner for implementado dentro do PWA, o logo deve vir da configuraçã
 2. fallback `settings.icon192Url`
 3. fallback `/icons/icon-192.svg`
 
-No snippet externo acima, como o site principal normalmente não tem acesso dinâmico ao `settings`, o administrador deve trocar manualmente o valor de `LOGO_URL`.
+No snippet externo acima, como o site principal normalmente não tem acesso dinâmico ao `settings`, o administrador deve trocar manualmente o valor de `LOGO_URL`. O valor inicial `https://pwa.app-bigpix.com/icons/icon-192.svg` é apenas um fallback temporário; quando a URL oficial do logo BigPix estiver disponível, ela deve substituir esse fallback.
