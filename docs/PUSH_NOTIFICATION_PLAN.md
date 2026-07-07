@@ -3,7 +3,7 @@
 # Plano e histórico de diagnóstico — Push Notification (OneSignal)
 
 **Projeto:** app-big-pwa
-**Escopo desta versão:** app-big / BigPix (`pwa.app-bigpix.com`). Replicação para os outros 5 tenants ainda pendente (ver seção "Pendência" abaixo).
+**Escopo:** app-big / BigPix (`pwa.app-bigpix.com`), origem das correções. Replicação concluída nos outros 5 tenants em 2026-07-07 (ver seção "Replicação" abaixo).
 
 ---
 
@@ -77,23 +77,23 @@ Ver também `docs/ONBOARDING_CLIENTE.md`, seção "Erros Comuns" → "Push não 
 
 ## 6. Commits relacionados
 
-- `928f117` — `fix: wait for push sync before launcher redirect`
-- `1825f43` — `fix: set target_channel on OneSignal push payload`
+- `928f117` — `fix: wait for push sync before launcher redirect` (app-big)
+- `1825f43` — `fix: set target_channel on OneSignal push payload` (app-big)
 
-Ambos aplicados e publicados somente no **app-big**.
+Replicados como um único commit por tenant (`fix: sync push subscription before redirect and set target_channel`) — ver seção 7 para a lista de commits por tenant.
 
 ---
 
-## 7. Pendência — replicar para os outros 5 tenants
+## 7. Replicação para os outros 5 tenants — concluída em 2026-07-07
 
-As duas correções de código (seção 4) ainda não foram replicadas para:
+As duas correções de código (seção 4) foram replicadas e implantadas em produção nos 5 tenants:
 
-- [ ] `app-pixkeno`
-- [ ] `app-superkeno`
-- [ ] `app-megabingo7`
-- [ ] `app-obapremios`
-- [ ] `app-premiosaovivo`
+- [x] `app-pixkeno` — commit `888d317` — `fix: sync push subscription before redirect and set target_channel`
+- [x] `app-superkeno` — commit `7e1cd1c` — `fix: sync push subscription before redirect and set target_channel`
+- [x] `app-megabingo7` — commit `1a8b8be` — `fix: sync push subscription before redirect and set target_channel`
+- [x] `app-obapremios` — commit `b30df79` — `fix: sync push subscription before redirect and set target_channel`
+- [x] `app-premiosaovivo` — commit `f3a02e3` — `fix: sync push subscription before redirect and set target_channel`
 
-Arquivos envolvidos em cada replicação: `app/page.tsx`, `components/onesignal-initializer.tsx`, `app/api/push/send/route.ts`. Mesmo processo já usado na replicação da autenticação Supabase Auth (diagnóstico Git → comparação com app-big → implementação → diff → aprovação → commit → push → validação de deploy), um tenant por vez.
+Arquivos envolvidos em cada replicação: `app/page.tsx`, `components/onesignal-initializer.tsx`, `app/api/push/send/route.ts`. Mesmo processo já usado na replicação da autenticação Supabase Auth (diagnóstico Git → comparação com app-big → implementação → diff → aprovação → commit → push → validação de deploy), um tenant por vez. Deploy em produção (Vercel, alias `pwa.<tenant>.com`) confirmado `Ready` para todos os 5, com as rotas principal e `/admin/login` respondendo HTTP 200.
 
-O item de bateria/otimização (seção 3/5) não depende de código — é orientação operacional válida para todos os tenants desde já, independente da replicação de código estar pendente.
+O item de bateria/otimização (seção 3/5) não depende de código — é orientação operacional válida para todos os tenants, já disponível independente desta replicação.
