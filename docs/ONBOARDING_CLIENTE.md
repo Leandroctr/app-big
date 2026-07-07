@@ -186,7 +186,13 @@ Verificar:
 - OneSignal App ID;
 - Service Worker;
 - REST API Key;
-- Site URL do OneSignal.
+- Site URL do OneSignal;
+- **Android em modo econômico ou com otimização/restrição de bateria ativa
+  para o Chrome (ou para o PWA instalado)** — pode impedir a exibição do
+  push mesmo quando a OneSignal confirma `Delivered`. Orientar o usuário a
+  colocar o Chrome/PWA em modo normal ou "Sem restrições" em
+  Configurações do Android → Bateria. Ver `docs/PUSH_NOTIFICATION_PLAN.md`
+  para o histórico técnico completo do incidente que confirmou essa causa.
 
 ### Configuração não atualiza
 
