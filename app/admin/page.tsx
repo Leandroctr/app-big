@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminPushForm } from "@/components/admin-push-form";
-import { clearAdminSession, isAdminAuthenticated } from "@/lib/admin-auth";
 import { appConfig } from "@/lib/app-config";
 import { getAppSettings } from "@/lib/app-settings.server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
-import { createSupabaseSessionClient } from "@/lib/supabase/admin-session";
 import { requireTenantAccess } from "@/lib/admin-identity.server";
 
 export const dynamic = "force-dynamic";
@@ -40,40 +38,11 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-async function logout() {
-  "use server";
-
-  await clearAdminSession();
-
-  // Encerra tambem uma eventual sessao Supabase Auth (cookies sb-*). Sem
-  // isso, quem entrou pelo login real continuaria com acesso a /admin
-  // depois de clicar em "Sair", ja que o guard abaixo agora aceita essa
-  // sessao independentemente do cookie legado.
-  const sessionClient = await createSupabaseSessionClient();
-
-  if (sessionClient) {
-    await sessionClient.auth.signOut();
-  }
-
-  redirect("/admin/login");
-}
-
 export default async function AdminPage() {
-  // Guard real por tenant, com fallback legado mantido nesta fase:
-  // - currentAdmin: sessao Supabase Auth valida (super_admin sempre passa;
-  //   admin precisa de admin_tenant_access ativo para o tenant deste deploy).
-  // - hasLegacySession: cookie antigo admin_session, ainda aceito para nao
-  //   travar o acesso principal enquanto a migracao esta em andamento.
-  // Nenhum dos dois concede a tela /admin/administradores por si so — isso
-  // depende exclusivamente de currentAdmin.role === "super_admin".
   const currentAdmin = await requireTenantAccess();
-  const hasLegacySession = await isAdminAuthenticated();
-
-  if (!currentAdmin && !hasLegacySession) {
+  if (!currentAdmin) {
     redirect("/admin/login");
   }
-
-  const isSuperAdmin = currentAdmin?.role === "super_admin";
 
   const supabase = createSupabaseAdminClient();
   const settings = await getAppSettings();
@@ -127,7 +96,7 @@ export default async function AdminPage() {
             <h1 className="text-2xl font-black tracking-normal">Painel Admin</h1>
           </div>
           <div className="flex items-center gap-4">
-            {isSuperAdmin ? (
+            {currentAdmin.role === "super_admin" ? (
               <Link className="text-sm font-bold text-slate-700" href="/admin/administradores">
                 Administradores
               </Link>
@@ -138,7 +107,7 @@ export default async function AdminPage() {
             <Link className="text-sm font-bold text-slate-700" href="/">
               Ver home
             </Link>
-            <form action={logout}>
+            <form action="/api/admin/logout" method="post">
               <button className="text-sm font-bold text-slate-700" type="submit">
                 Sair
               </button>

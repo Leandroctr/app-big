@@ -4,7 +4,24 @@
 
 **Projeto:** app-big-pwa
 **Escopo desta fase:** somente `app-big`. Os outros 5 tenants (`app-megabingo7`, `app-obapremios`, `app-premiosaovivo`, `app-pixkeno`, `app-superkeno`) nao sao alterados nesta rodada.
-**Status:** etapas preparatorias 1-7 executadas (arquivos criados, nada conectado, nada aplicado no banco). Aguardando aprovacao para as proximas etapas.
+**Status atual (2026-09-01):** corte do legacy concluído na branch CETEC; Supabase
+Auth, `admin_users` e `admin_tenant_access` são o único caminho administrativo.
+
+> **Nota histórica:** este documento registra incrementalmente a implantação
+> original. Todas as referências abaixo a `ADMIN_EMAIL`, `ADMIN_PASSWORD`,
+> `admin_session`, fallback ou sessão legacy descrevem estados anteriores e
+> estão obsoletas. Elas não descrevem o código vigente após o corte CETEC.
+
+### Estado vigente do BigPix
+
+- `super_admin` mantém acesso global e a UI/API de gestão de administradores;
+- `admin` depende de grant ativo por `tenant_domain` e não acessa essa gestão;
+- criação/vínculo de usuários, edição de role/active/grants, reset de senha e
+  `lib/password-policy.ts` foram preservados;
+- os cinco guards CETEC dependem exclusivamente de `requireTenantAccess()`;
+- logout revoga a sessão Supabase e o proxy apenas expira a cookie legacy;
+- a migration 003 já está aplicada no Supabase compartilhado; nenhum SQL foi
+  reexecutado durante esta sincronização.
 
 ---
 
@@ -869,8 +886,8 @@ validada em uso real**.
       `admin_users.id = e8acfa19-dd2a-4bb2-a5f2-730fcea3e6a6`, role `super_admin`.
 - [x] 14. Rodar checklist de testes completo (parcial — só o que e possivel nesta
       fase intermediaria, sem guards trocados; ver secao 6.3).
-- [ ] 15. Desligar o fallback legado (etapa separada).
-- [ ] 16. Atualizar `AGENTS.md`/`CLAUDE.md`/`docs/AUDIT_REPORT.md`/`docs/TENANT_DOMAIN_AUDIT.md`.
+- [x] 15. Desligar o fallback legado — concluído na remediação CETEC de 2026-09-01.
+- [x] 16. Atualizar a documentação de autenticação e auditoria correspondente.
 - [ ] 17. (fora desta rodada) Avaliar `middleware.ts` como camada extra.
 - [x] 18. Replicar autenticacao Supabase Auth (sem tela de administradores)
       para os outros 5 tenants — ver secao 6.15. **Concluido em
