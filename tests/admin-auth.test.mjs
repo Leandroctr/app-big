@@ -12,6 +12,19 @@ const guardedFiles = [
   "app/api/push/send/route.ts",
 ];
 
+const bigPixSuperAdminGuardedFiles = [
+  "app/admin/administradores/page.tsx",
+  "app/api/admin/admins/route.ts",
+  "app/api/admin/admins/[id]/route.ts",
+  "app/api/admin/admins/[id]/access/route.ts",
+];
+
+const mfaFiles = [
+  "app/admin/mfa/page.tsx",
+  "app/admin/mfa/actions.ts",
+  "app/admin/mfa/mfa-form.tsx",
+];
+
 const bigPixAdminFiles = [
   "app/admin/administradores/page.tsx",
   "app/admin/reset-password/page.tsx",
@@ -44,8 +57,10 @@ test("login requires both Supabase Auth and tenant authorization", () => {
   const source = read("app/admin/login/page.tsx");
 
   assert.match(source, /signInWithPassword/);
-  assert.match(source, /getAuthorizedAdminForTenant/);
+  assert.match(source, /getAdminPendingMfaForTenant/);
   assert.match(source, /signOut\(\{ scope: "local" \}\)/);
+  assert.match(source, /redirect\("\/admin\/mfa"\)/);
+  assert.doesNotMatch(source, /redirect\("\/admin"\)/);
   assert.doesNotMatch(source, /validateAdminCredentials|createAdminSession|legacy/i);
 });
 
@@ -67,6 +82,72 @@ test("identity is revalidated by Supabase Auth instead of trusting getSession", 
   assert.match(source, /auth\.getUser\(\)/);
   assert.doesNotMatch(source, /auth\.getSession\(\)/);
   assert.match(source, /!data\.active/);
+});
+
+test("administrative identity is separate from the restricted pending-MFA helper", () => {
+  const source = read("lib/admin-identity.server.ts");
+
+  assert.match(source, /getAuthenticatedAdmin/);
+  assert.match(source, /getAdminPendingMfaForTenant/);
+  assert.match(source, /await getAuthenticatedAdmin\(\)/);
+  assert.match(source, /hasTenantAccess\(admin, tenantDomain\)/);
+});
+
+test("getCurrentAdmin fails closed unless the session has strong TOTP AAL2", () => {
+  const source = read("lib/admin-identity.server.ts");
+
+  assert.match(source, /getAuthenticatorAssuranceLevel\(\)/);
+  assert.match(source, /currentLevel === "aal2"/);
+  assert.match(source, /nextLevel === "aal2"/);
+  assert.match(source, /method === "totp"/);
+  assert.match(source, /!admin \|\| !\(await hasRequiredAdminMfa\(\)\)/);
+  assert.match(source, /return !error && isAdminMfaAssuranceSatisfied\(data\)/);
+  assert.match(source, /catch \{\s*return false;/s);
+});
+
+test("tenant and super-admin guards inherit the central MFA gate", () => {
+  const source = read("lib/admin-identity.server.ts");
+
+  assert.match(source, /requireSuperAdmin[\s\S]*await getCurrentAdmin\(\)/);
+  assert.match(source, /requireTenantAccess[\s\S]*await getCurrentAdmin\(\)/);
+});
+
+test("the MFA route supports enrollment, challenge, verify and AAL2 confirmation", () => {
+  for (const path of mfaFiles) {
+    assert.equal(existsSync(path), true, path);
+  }
+
+  const page = read("app/admin/mfa/page.tsx");
+  const actions = read("app/admin/mfa/actions.ts");
+
+  assert.match(page, /getAdminPendingMfaForTenant\(\)/);
+  assert.match(page, /listFactors\(\)/);
+  assert.match(page, /isAdminMfaAssuranceSatisfied/);
+  assert.match(page, /redirect\("\/admin"\)/);
+  assert.match(actions, /mfa\.enroll\(\{\s*factorType: "totp"/s);
+  assert.match(actions, /mfa\.challenge\(\{ factorId \}\)/);
+  assert.match(actions, /mfa\.verify\(\{/);
+  assert.match(actions, /getAuthenticatorAssuranceLevel\(\)/);
+  assert.match(actions, /redirect\("\/admin"\)/);
+});
+
+test("MFA secrets remain confined to the enrollment response and form", () => {
+  const actions = read("app/admin/mfa/actions.ts");
+  const form = read("app/admin/mfa/mfa-form.tsx");
+  const combined = `${actions}\n${form}`;
+
+  assert.match(actions, /secret: data\.totp\.secret/);
+  assert.doesNotMatch(combined, /console\.|logServer|analytics|searchParams|URLSearchParams/);
+  assert.doesNotMatch(actions, /\.from\(|insert\(|update\(/);
+});
+
+test("only abandoned unverified TOTP enrollments may be removed", () => {
+  const actions = read("app/admin/mfa/actions.ts");
+
+  assert.match(actions, /factor\.factor_type === "totp"/);
+  assert.match(actions, /factor\.status === "unverified"/);
+  assert.match(actions, /mfa\.unenroll/);
+  assert.match(actions, /if \(factors\.totp\.length > 0\)/);
 });
 
 test("only super_admin and admin are accepted at runtime", () => {
@@ -127,6 +208,12 @@ test("BigPix preserves its administrator management surface", () => {
   assert.doesNotMatch(routes, /isAdminAuthenticated|hasLegacySession/);
 });
 
+test("all BigPix super-admin surfaces use the central super-admin guard", () => {
+  for (const path of bigPixSuperAdminGuardedFiles) {
+    assert.match(read(path), /requireSuperAdmin\(\)/, path);
+  }
+});
+
 test("BigPix preserves password reset and password policy", () => {
   const resetPage = read("app/admin/reset-password/page.tsx");
   const policy = read("lib/password-policy.ts");
@@ -135,6 +222,8 @@ test("BigPix preserves password reset and password policy", () => {
   assert.match(resetPage, /PASSWORD_RECOVERY/);
   assert.match(resetPage, /auth\.updateUser\(\{ password \}\)/);
   assert.match(resetPage, /auth\.signOut\(\)/);
+  assert.match(resetPage, /password_reset=1/);
+  assert.match(read("app/admin/login/page.tsx"), /redirect\("\/admin\/mfa"\)/);
   assert.match(resetPage, /checkPasswordPolicy/);
   assert.match(policy, /MIN_LENGTH = 12/);
   assert.match(policy, /blockedPasswords/);

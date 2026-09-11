@@ -11,16 +11,12 @@
 
 ## 1. Resumo Executivo
 
-**Atualização 2026-09-03 — fechamento CETEC:** a remediação CETEC de código está
-**CONCLUÍDA** nos seis PWAs. **Pendências técnicas CETEC abertas: 0.** Next.js está
-em `16.3.4`, React e React DOM em `19.2.7`, nenhuma dependência direta usa `latest`
-e o `npm audit` reporta 0 critical, 0 high, 0 moderate e 0 low. M-5, M-6 e M-8 estão
-resolvidos. O que resta não é código faltante, e sim validação futura/externa:
-aplicar o baseline `supabase/schema.sql` em um Supabase novo e descartável, a
-validação operacional em navegador/staging e a autorização externa para o retorno
-dos PWAs. Ver seção 18. As seções 9 a 17 são registro histórico datado e foram
-preservadas como estavam; onde descrevem estado intermediário, a seção 18 é a
-referência atual.
+**Atualização 2026-09-11 — pós-verificação CETEC:** A-2 permaneceu parcial porque
+o rate limiting existia, mas MFA ainda não era exigido. A seção 19 registra a
+implementação de referência de MFA TOTP/AAL2 feita somente no BigPix. Os outros
+cinco PWAs ainda não receberam essa implementação; portanto, este trabalho não
+declara o fechamento global de A-2. O fechamento de 2026-09-03 na seção 18 é
+mantido como registro histórico do estado conhecido naquela data.
 
 **Atualização 2026-07-02:** o bloqueio crítico descrito abaixo foi resolvido. Leitura
 direta do banco compartilhado confirmou que a migration `002` já foi executada — a
@@ -1253,3 +1249,52 @@ Não são código faltante e não contam como pendência CETEC:
 M-7/`admin_audit_log`, melhorias P3/P4, modal de instalação, Service Worker
 legado e a futura unificação do App ID permanecem classificados fora deste lote
 e não são pendências CETEC.
+
+---
+
+## 19. A-2 — MFA administrativo TOTP/AAL2 no BigPix — 2026-09-11
+
+O BigPix passou a ser o repositório de referência para o fechamento de A-2. O
+login por senha cria apenas a sessão Supabase `aal1` e redireciona para
+`/admin/mfa`; senha e role, isoladamente, não liberam painel nem API.
+
+`lib/admin-identity.server.ts` separa a identidade administrativa autenticada do
+enforcement forte. O helper restrito `getAdminPendingMfaForTenant()` valida
+`auth.getUser()`, linha ativa em `admin_users`, role válida e grant do tenant
+(ou `super_admin`), mas existe apenas para login e fluxo MFA. `getCurrentAdmin()`
+falha fechado se a consulta do assurance level falhar ou se a sessão não tiver,
+simultaneamente, `currentLevel = aal2`, `nextLevel = aal2` e método atual `totp`.
+`requireTenantAccess()` e `requireSuperAdmin()` herdam esse gate central, sem
+exceção para `super_admin`.
+
+A rota `/admin/mfa` trata os dois estados:
+
+- sem fator TOTP verificado: enrollment, QR/segredo exibidos somente nessa tela,
+  challenge, verify e nova confirmação de AAL2;
+- com fator TOTP verificado e sessão `aal1`: challenge, verify e confirmação de
+  AAL2 antes do redirect para `/admin`.
+
+O segredo não é gravado em banco próprio, URL, analytics ou log. Fatores
+verificados nunca são removidos automaticamente. Somente enrollment TOTP
+abandonado e ainda `unverified` pode ser removido pela sessão autenticada para
+reiniciar o cadastro.
+
+As superfícies `/admin`, `/admin/settings`, `/api/admin/settings`,
+`/api/admin/upload`, `/api/push/send`, `/admin/administradores` e
+`/api/admin/admins/**` continuam usando os guards centrais e, por consequência,
+ficam bloqueadas em `aal1`. Permanecem fora do gate administrativo forte apenas
+os fluxos públicos ou pré-acesso previstos: `/admin/login`, `/admin/mfa`,
+`/api/admin/logout`, `/admin/reset-password`, `/api/settings` e
+`/api/push/subscribe`.
+
+O reset de senha continua disponível para o token de recovery, termina com
+`signOut()` e volta ao login com `password_reset=1`. Ele não remove TOTP nem
+concede AAL2; o login seguinte volta obrigatoriamente a `/admin/mfa`. O logout
+existente continua revogando a sessão global e fazendo limpeza local como
+fallback.
+
+Esta etapa não alterou schema, RLS, grants, Supabase, Vercel, OneSignal ou os
+outros cinco repositórios. A propagação só pode ocorrer depois da validação deste
+repo de referência. A suíte real permanece opt-in, cria exclusivamente usuários
+descartáveis e executa teardown explícito; sem credenciais de staging ela deve
+ser reportada como não executada, nunca simulada.
