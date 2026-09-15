@@ -1298,3 +1298,66 @@ outros cinco repositórios. A propagação só pode ocorrer depois da validaçã
 repo de referência. A suíte real permanece opt-in, cria exclusivamente usuários
 descartáveis e executa teardown explícito; sem credenciais de staging ela deve
 ser reportada como não executada, nunca simulada.
+
+---
+
+## 20. B-5 — navegação network-first no Service Worker do BigPix — 2026-09-14
+
+Os seis repositórios oficiais foram auditados em `origin/main`. `public/sw.js`,
+`components/service-worker-register.tsx`, `app/manifest.ts`, `next.config.ts` e
+os quatro arquivos de worker OneSignal tinham blobs Git idênticos nos seis
+PWAs. A implementação desta etapa foi feita somente no BigPix; não houve push,
+deploy, alteração de Supabase, Vercel, OneSignal, autenticação ou dos outros
+cinco repositórios.
+
+### Causa confirmada
+
+O fetch handler consultava `caches.match(event.request)` antes de chamar
+`fetch(event.request)`. Como `/` era precacheado em `app-big-v1`, uma navegação
+para o shell podia retornar HTML antigo indefinidamente depois de um deploy. A
+resposta de rede em cache miss também não atualizava o cache. O `activate`
+apagava todo cache da origem cujo nome não fosse exatamente o atual, sem limitar
+a limpeza ao namespace deste app.
+
+### Correção de referência
+
+- navegações/documentos públicos usam network-first;
+- resposta de rede vence o cache e atualiza somente o shell público `/` quando
+  for HTTP OK, não redirecionada e sem `private`, `no-store`, `Set-Cookie` ou
+  `Vary: Cookie/Authorization/*`;
+- falha de rede usa a request cacheada e depois `/` como fallback offline;
+- assets versionados em `/_next/static/**` e o manifest continuam cache-first e
+  passam a popular `app-big-v2` em cache miss apenas quando a resposta é segura
+  para cache; recursos não versionados fora dessa allowlist não são
+  interceptados;
+- `/admin`, `/admin/**`, `/api`, `/api/**`, requests não-GET e requests com
+  `Authorization` não recebem `respondWith` e não são lidos nem gravados pelo
+  SW;
+- o cache passou de `app-big-v1` para `app-big-v2`; no `activate`, somente
+  caches antigos com prefixo `app-big-` são removidos. Caches OneSignal ou de
+  outro namespace na mesma origem são preservados;
+- precache de `/` e `/manifest.webmanifest`, fallback offline, `skipWaiting()` e
+  `clients.claim()` foram preservados;
+- `tests/service-worker.test.mjs` cobre o comportamento do SW e o comando
+  `npm run test:pwa` integra a matriz estática da CI.
+
+### Validação local
+
+`npm ci`, TypeScript, build Next 16.3.4 e `git diff --check` passaram. O lint
+passou com zero erros e manteve somente o warning preexistente de
+`formatDimension`. Resultados: PWA/SW 15/15, CETEC P1 8/8, auth estático 20/20,
+upload 22/22, push hardening 8/8, push subscriptions 7/7, schema baseline 8/8 e
+política de CI 15/15. `npm audit` retornou zero vulnerabilidades.
+
+O smoke HTTP do build local confirmou status 200 para `/`, manifest, `/sw.js`,
+os dois caminhos de worker OneSignal e `/api/settings`; `/admin` retornou 307
+sem sessão. Um navegador real não estava disponível na sessão, então registro,
+cache e modo offline via DevTools permanecem pendentes de validação operacional.
+As suítes `:real` não foram executadas porque escrevem no Supabase e esta etapa
+proibiu alterações externas.
+
+Rollback de código: reverter o commit local desta etapa. Em navegador que já
+ativou `app-big-v2`, o SW revertido volta a criar `app-big-v1` e seu `activate`
+histórico remove os demais caches da origem; por isso qualquer rollback futuro
+deve preferir uma versão `v3` com a estratégia corrigida, em vez de republicar o
+arquivo antigo sem coordenação.
