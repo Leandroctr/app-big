@@ -3,6 +3,12 @@ import { requireSuperAdmin } from "@/lib/admin-identity.server";
 import { listTenantDomains } from "@/lib/admin-directory.server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { logServerError, logServerInfo } from "@/lib/logger/server";
+import { sanitizeTenantGrantAuditMetadata } from "@/lib/admin-audit";
+import {
+  AdminAuditUnavailableError,
+  beginAdminAudit,
+  completeAdminAudit,
+} from "@/lib/admin-audit.server";
 
 type UpdateAccessPayload = {
   tenantDomain?: string;
@@ -56,6 +62,51 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: "Supabase nao configurado." }, { status: 503 });
   }
 
+  const { data: previousAccess, error: previousAccessError } = await supabase
+    .from("admin_tenant_access")
+    .select("active")
+    .eq("admin_user_id", id)
+    .eq("tenant_domain", tenantDomain)
+    .maybeSingle();
+
+  if (previousAccessError) {
+    logServerError("admin_tenant_access_lookup_error", previousAccessError, {
+      adminUserId: id,
+      tenantDomain,
+    });
+    return NextResponse.json(
+      { ok: false, error: "Nao foi possivel validar o acesso atual." },
+      { status: 500 },
+    );
+  }
+
+  const previousActive =
+    typeof previousAccess?.active === "boolean" ? previousAccess.active : null;
+  const auditMetadata = sanitizeTenantGrantAuditMetadata({
+    previousActive,
+    currentActive: active,
+  });
+  let auditContext;
+
+  try {
+    auditContext = await beginAdminAudit({
+      actor: currentAdmin,
+      action: active ? "admin.tenant_granted" : "admin.tenant_revoked",
+      entityType: "admin_tenant_access",
+      entityId: id,
+      targetTenantDomain: tenantDomain,
+      metadataJson: auditMetadata,
+    });
+  } catch (error) {
+    if (error instanceof AdminAuditUnavailableError) {
+      return NextResponse.json(
+        { ok: false, error: "Auditoria administrativa indisponivel." },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
+
   const { data, error } = await supabase
     .from("admin_tenant_access")
     .upsert(
@@ -66,6 +117,13 @@ export async function PATCH(
     .single();
 
   if (error || !data) {
+    await completeAdminAudit(auditContext, {
+      outcome: "failure",
+      metadataJson: sanitizeTenantGrantAuditMetadata({
+        previousActive,
+        currentActive: previousActive,
+      }),
+    });
     logServerError("admin_tenant_access_update_error", error, {
       adminUserId: id,
       tenantDomain,
@@ -75,6 +133,14 @@ export async function PATCH(
       { status: 500 },
     );
   }
+
+  await completeAdminAudit(auditContext, {
+    outcome: "success",
+    metadataJson: sanitizeTenantGrantAuditMetadata({
+      previousActive,
+      currentActive: data.active,
+    }),
+  });
 
   logServerInfo("admin_tenant_access_updated", { adminUserId: id, tenantDomain, active });
 

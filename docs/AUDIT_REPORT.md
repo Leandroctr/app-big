@@ -1361,3 +1361,40 @@ ativou `app-big-v2`, o SW revertido volta a criar `app-big-v1` e seu `activate`
 histórico remove os demais caches da origem; por isso qualquer rollback futuro
 deve preferir uma versão `v3` com a estratégia corrigida, em vez de republicar o
 arquivo antigo sem coordenação.
+
+---
+
+## 21. M-7 — trilha administrativa persistente no BigPix — 2026-09-15
+
+O BigPix recebeu a implementação canônica de `public.admin_audit_logs` para o
+Supabase compartilhado PWA-WL. A migration e o rollback existem somente neste
+repositório; nenhuma alteração foi propagada aos outros cinco PWAs e nenhuma UI
+de auditoria foi criada.
+
+`lib/admin-audit.server.ts` deriva ator e tenant de origem do contexto
+server-side validado, cria o correlation id e persiste exclusivamente pelo
+client service role. Uma falha no evento `attempt` bloqueia settings, upload,
+push e as mutações exclusivas de administradores. O resultado é sempre outro
+insert append-only; falha terminal não apaga o attempt nem desfaz operação
+externa.
+
+As allowlists e o limite de 16 KiB impedem cópia de objetos completos. Settings,
+asset, push, admin e tenant grant possuem formatos específicos. Credenciais,
+tokens, TOTP, payloads, recipients, arquivos e resposta integral do OneSignal
+não entram na tabela. Login, logout, MFA e password reset permanecem fora do
+M-7 por serem eventos de autenticação/sessão.
+
+Schema, aplicação controlada, queries de validação e teste funcional estão
+documentados em `docs/ADMIN_AUDIT_TRAIL.md`.
+
+A migration foi aplicada uma vez ao projeto `myivwdbnpbuooncehwds` depois de
+preflight confirmar a ausência da tabela. A validação efetiva encontrou RLS
+ativa, zero policies, zero privilégios para `anon` e `authenticated`, e
+somente `SELECT`/`INSERT` para `service_role`. Os cinco índices, PK, check
+de outcome e FK `ON DELETE SET NULL` foram confirmados no catálogo.
+
+O teste funcional autenticado alterou `redirectDelayMs` de 7999 para 8000 e
+restaurou 7999. Cada operação produziu `attempt` e `success` com correlation
+id próprio e compartilhado pelo par. Ator, snapshots e tenants foram validados;
+os JSONs continham apenas `redirectDelayMs`/`changedFields` e nenhum campo
+proibido. Os quatro eventos reais foram preservados.

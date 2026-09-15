@@ -233,3 +233,12 @@ existente. Ele não cria tenants, não restaura usuários/dados e não recria
 Qualquer prova dinâmica deve ocorrer primeiro em um Supabase local ou staging
 descartável, nunca em produção.
 
+### Migration M-7 no banco compartilhado existente
+
+`supabase/migrations/20260915153506_admin_audit_logs.sql` é uma evolução
+canônica excepcional para o PWA-WL existente, não uma reaplicação do baseline.
+Ela deve ser aplicada uma única vez pelo app-big, somente depois de preflight
+read-only confirmar que `public.admin_audit_logs` não existe, testes locais
+verdes e rollback revisado. Validar RLS, zero policies e grants após a execução.
+Os outros cinco repositórios não devem receber migrations concorrentes.
+

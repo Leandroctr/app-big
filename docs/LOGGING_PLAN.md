@@ -415,3 +415,22 @@ payload e destinatários nunca são copiados para `error_message`. Em sucesso,
 
 M-7/`admin_audit_log` continua fora deste lote e não é declarado resolvido.
 
+---
+
+## 9. M-7 implementado no BigPix — 2026-09-15
+
+O contrato anterior de seção 2 era uma proposta histórica. O contrato canônico
+agora é `public.admin_audit_logs`, detalhado em
+`docs/ADMIN_AUDIT_TRAIL.md`: todo `attempt` é persistido antes da mutação e
+o resultado é outro insert com o mesmo `correlation_id`.
+
+Settings, upload, push, criação/vínculo/alteração de admin e grants de tenant
+estão instrumentados. O evento operacional `admin_audit_write_error` registra
+somente fase, action, outcome quando aplicável, correlation id e identificadores
+sanitizados do erro. Nunca registra payload, mensagem bruta, stack, senha, token,
+cookie, TOTP, key, arquivo, recipient ou resposta integral de provedor.
+
+IP e user-agent não fazem parte do M-7 inicial. Login, logout, MFA e password
+reset continuam fora da auditoria de mutações administrativas. A implementação
+permanece restrita ao BigPix até autorização explícita de propagação.
+

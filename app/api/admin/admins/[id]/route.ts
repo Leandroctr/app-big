@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/admin-identity.server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { logServerError, logServerInfo } from "@/lib/logger/server";
+import { sanitizeAdminAuditSnapshot } from "@/lib/admin-audit";
+import {
+  AdminAuditUnavailableError,
+  beginAdminAudit,
+  completeAdminAudit,
+} from "@/lib/admin-audit.server";
 
 type UpdateAdminPayload = {
   role?: string;
@@ -80,6 +86,55 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: "Supabase nao configurado." }, { status: 503 });
   }
 
+  const { data: previousAdmin, error: previousAdminError } = await supabase
+    .from("admin_users")
+    .select("id, name, role, active")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (previousAdminError || !previousAdmin) {
+    logServerError("admin_update_lookup_error", previousAdminError, {
+      adminUserId: id,
+    });
+    return NextResponse.json(
+      { ok: false, error: "Nao foi possivel localizar o administrador." },
+      { status: 404 },
+    );
+  }
+
+  const finalCandidate = {
+    name: update.name === undefined ? previousAdmin.name : update.name,
+    role: update.role === undefined ? previousAdmin.role : update.role,
+    active: update.active === undefined ? previousAdmin.active : update.active,
+  };
+  const auditAction =
+    finalCandidate.role !== previousAdmin.role
+      ? "admin.role_changed"
+      : finalCandidate.active !== previousAdmin.active
+        ? finalCandidate.active
+          ? "admin.activated"
+          : "admin.deactivated"
+        : "admin.updated";
+  let auditContext;
+
+  try {
+    auditContext = await beginAdminAudit({
+      actor: currentAdmin,
+      action: auditAction,
+      entityType: "admin",
+      entityId: id,
+      beforeJson: sanitizeAdminAuditSnapshot(previousAdmin),
+    });
+  } catch (error) {
+    if (error instanceof AdminAuditUnavailableError) {
+      return NextResponse.json(
+        { ok: false, error: "Auditoria administrativa indisponivel." },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
+
   const { data, error } = await supabase
     .from("admin_users")
     .update(update)
@@ -88,12 +143,18 @@ export async function PATCH(
     .maybeSingle();
 
   if (error || !data) {
+    await completeAdminAudit(auditContext, { outcome: "failure" });
     logServerError("admin_update_error", error, { adminUserId: id });
     return NextResponse.json(
       { ok: false, error: "Nao foi possivel atualizar o administrador." },
       { status: 500 },
     );
   }
+
+  await completeAdminAudit(auditContext, {
+    outcome: "success",
+    afterJson: sanitizeAdminAuditSnapshot(data),
+  });
 
   logServerInfo("admin_updated", { adminUserId: id, update });
 

@@ -649,3 +649,12 @@ O primeiro lote estará concluído quando todos os critérios abaixo forem verif
 - [ ] Painel admin continua funcionando
 - [ ] Push continua funcionando para subscriptions existentes
 - [ ] Documentação relacionada atualizada junto com cada alteração implementada
+
+---
+
+## Evolução M-7 posterior ao lote original
+
+Em 2026-09-15, o BigPix passou a conter o núcleo canônico da trilha
+administrativa persistente. A arquitetura e o procedimento de aplicação única
+no Supabase compartilhado estão em `docs/ADMIN_AUDIT_TRAIL.md`. Esta evolução
+não inclui UI e ainda não autoriza propagação aos outros cinco PWAs.

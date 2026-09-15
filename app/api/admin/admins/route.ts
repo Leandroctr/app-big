@@ -9,6 +9,16 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { checkPasswordPolicy } from "@/lib/password-policy";
 import { logServerError, logServerInfo } from "@/lib/logger/server";
+import {
+  emptyAuditJson,
+  sanitizeAdminAuditSnapshot,
+  sanitizeAdminCreateAuditMetadata,
+} from "@/lib/admin-audit";
+import {
+  AdminAuditUnavailableError,
+  beginAdminAudit,
+  completeAdminAudit,
+} from "@/lib/admin-audit.server";
 
 type CreateAdminPayload = {
   email?: string;
@@ -119,6 +129,30 @@ export async function POST(request: Request) {
   const tenantDomains = requestedTenantDomains.filter((domain) =>
     validTenantDomains.includes(domain),
   );
+  const auditAction = hasPassword ? "admin.created" : "admin.linked";
+  const attemptMetadata = sanitizeAdminCreateAuditMetadata({
+    linked: !hasPassword,
+    requestedTenantCount: tenantDomains.length,
+  });
+  let auditContext;
+
+  try {
+    auditContext = await beginAdminAudit({
+      actor: currentAdmin,
+      action: auditAction,
+      entityType: "admin",
+      beforeJson: emptyAuditJson(),
+      metadataJson: attemptMetadata,
+    });
+  } catch (error) {
+    if (error instanceof AdminAuditUnavailableError) {
+      return NextResponse.json(
+        { ok: false, error: "Auditoria administrativa indisponivel." },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 
   let authUserId: string;
   let linked = false;
@@ -133,6 +167,10 @@ export async function POST(request: Request) {
     });
 
     if (createUserError) {
+      await completeAdminAudit(auditContext, {
+        outcome: "failure",
+        metadataJson: attemptMetadata,
+      });
       if (isDuplicateEmailError(createUserError)) {
         // Caso D: mensagem clara e sem ambiguidade, sem tentar adivinhar —
         // pede que o operador reenvie sem senha para vincular a conta
@@ -155,6 +193,10 @@ export async function POST(request: Request) {
     }
 
     if (!createdUser?.user) {
+      await completeAdminAudit(auditContext, {
+        outcome: "failure",
+        metadataJson: attemptMetadata,
+      });
       logServerError("admin_create_auth_user_error", undefined, { email });
       return NextResponse.json(
         { ok: false, error: "Nao foi possivel criar o usuario no Supabase Auth." },
@@ -169,6 +211,10 @@ export async function POST(request: Request) {
     const existingAuthUser = await findAuthUserByEmail(email);
 
     if (!existingAuthUser) {
+      await completeAdminAudit(auditContext, {
+        outcome: "failure",
+        metadataJson: attemptMetadata,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -190,6 +236,12 @@ export async function POST(request: Request) {
   const existingAdminUser = await getAdminUserByAuthId(authUserId);
 
   if (existingAdminUser) {
+    await completeAdminAudit(auditContext, {
+      outcome: linked ? "failure" : "partial",
+      entityId: existingAdminUser.id,
+      afterJson: sanitizeAdminAuditSnapshot(existingAdminUser),
+      metadataJson: attemptMetadata,
+    });
     return NextResponse.json(
       {
         ok: false,
@@ -212,6 +264,8 @@ export async function POST(request: Request) {
       linked,
     });
 
+    let cleanupFailed = false;
+
     if (!linked) {
       // So faz sentido reverter a conta Auth quando ela acabou de ser criada
       // por esta requisicao — nunca apagar uma conta Auth que ja existia
@@ -219,6 +273,7 @@ export async function POST(request: Request) {
       const { error: cleanupError } = await supabase.auth.admin.deleteUser(authUserId);
 
       if (cleanupError) {
+        cleanupFailed = true;
         logServerError("admin_create_cleanup_error", cleanupError, { authUserId });
       }
     } else {
@@ -227,6 +282,11 @@ export async function POST(request: Request) {
       // porque a conta Auth ja existia antes desta requisicao.
       logServerError("admin_link_admin_user_error", adminUserError, { email, authUserId });
     }
+
+    await completeAdminAudit(auditContext, {
+      outcome: cleanupFailed ? "partial" : "failure",
+      metadataJson: attemptMetadata,
+    });
 
     return NextResponse.json(
       { ok: false, error: "Nao foi possivel registrar o administrador." },
@@ -254,6 +314,19 @@ export async function POST(request: Request) {
       }, mas nao foi possivel salvar o acesso aos tenants selecionados. Ajuste na tela de administradores.`;
     }
   }
+
+  const finalMetadata = sanitizeAdminCreateAuditMetadata({
+    linked,
+    requestedTenantCount: tenantDomains.length,
+    grantedTenantCount:
+      role === "admin" && !tenantAccessWarning ? tenantDomains.length : 0,
+  });
+  await completeAdminAudit(auditContext, {
+    outcome: tenantAccessWarning ? "partial" : "success",
+    entityId: adminUserRow.id,
+    afterJson: sanitizeAdminAuditSnapshot(adminUserRow),
+    metadataJson: finalMetadata,
+  });
 
   logServerInfo(linked ? "admin_linked" : "admin_created", {
     email,
