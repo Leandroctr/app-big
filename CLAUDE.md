@@ -146,19 +146,21 @@ O projeto opera em **multi-tenant por domínio** — settings identificados por 
 
 Antes de qualquer desenvolvimento, ler: `docs/TENANT_DOMAIN_AUDIT.md`.
 
-### Estado da remediação CETEC (2026-09-03)
+### Registro interno sobre a remediação CETEC (posição documentada em 2026-09-03)
 
-A remediação CETEC de código está **CONCLUÍDA**. **Pendências técnicas CETEC abertas: 0.**
+Os documentos internos do projeto registraram, em 2026-09-03, a remediação de código como concluída e nenhuma pendência técnica CETEC aberta naquele momento. Esse registro é histórico: não constitui declaração externa definitiva nem substitui verificação independente.
 
-Não reabrir nem repetir essas correções. O detalhamento está em `docs/AUDIT_REPORT.md`, seção 18.
+O estado oficial de auditorias externas deve ser confirmado nos documentos emitidos pelo auditor e confrontado com o estado técnico atual. Agentes e revisores não devem tratar esta seção nem `docs/AUDIT_REPORT.md` como motivo para impedir a reabertura ou a reavaliação de um achado.
 
-Permanecem fora do código, como validações futuras/externas — não são pendências CETEC:
+Em caso de divergência, a evidência técnica atual e a documentação externa oficial prevalecem sobre notas históricas internas.
+
+Naquele registro interno, permaneceram classificados como validações futuras/externas:
 
 - **DEFERRED:** aplicar `supabase/schema.sql` em um projeto Supabase novo e descartável (staging);
 - **DEFERRED:** validação operacional em navegador/staging;
 - **EXTERNAL:** autorização externa para o retorno dos PWAs.
 
-Itens já classificados fora deste lote — M-7/`admin_audit_log`, melhorias P3/P4, modal de instalação, Service Worker legado e a futura unificação do App ID — também não são pendências CETEC.
+No mesmo registro, M-7/`admin_audit_log`, melhorias P3/P4, modal de instalação, Service Worker legado e a futura unificação do App ID foram classificados fora daquele lote. Essas classificações históricas também estão sujeitas à verificação descrita acima.
 
 ---
 
