@@ -1398,3 +1398,28 @@ restaurou 7999. Cada operação produziu `attempt` e `success` com correlation
 id próprio e compartilhado pelo par. Ator, snapshots e tenants foram validados;
 os JSONs continham apenas `redirectDelayMs`/`changedFields` e nenhum campo
 proibido. Os quatro eventos reais foram preservados.
+
+---
+
+## Recuperacao de senha no navegador (2026-11-19)
+
+O cliente Supabase do navegador importava URL e chave anonima por meio de
+`appConfig`, cuja funcao `readEnv(name)` usava acesso dinamico
+`process.env[name]`. O Next.js nao incorpora acessos dinamicos a variaveis
+`NEXT_PUBLIC_*` no JavaScript enviado ao navegador. Como resultado, o deploy
+tinha as variaveis cadastradas na Vercel, mas o fluxo de recuperacao recebia
+strings vazias e exibia "Supabase nao configurado neste ambiente".
+
+A correcao ficou restrita a `lib/supabase/client.ts`: URL e chave anonima agora
+sao lidas por referencias estaticas a `process.env.NEXT_PUBLIC_SUPABASE_URL` e
+`process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY`, permitindo a incorporacao no build.
+Nenhum guard administrativo, politica de senha, MFA/AAL2, rate limit, sessao,
+RLS, schema ou cliente com `service_role` foi alterado.
+
+Antes da publicacao, as dependencias afetadas por advisories foram atualizadas
+no proprio projeto, sem copiar lockfile externo e sem usar `--force`: Next.js
+`16.3.4` para `16.4.6` e Sharp `0.35.4` resolvido (`^0.35.2` declarado) para
+`0.35.5` fixo. `npm audit fix` sem forca atualizou somente transitivas dentro
+das faixas compativeis; `npm ci`, os dois modos de `npm audit`, typecheck,
+lint, build e as suites de autenticacao, seguranca, auditoria administrativa e
+politica de CI foram executados depois da regeneracao do lockfile.
