@@ -13,7 +13,7 @@
     "test:auth:real": "node --test tests/admin-auth.integration.mjs",
     "test:upload": "node --experimental-strip-types --test tests/upload-security.test.mjs",
     "test:push-hardening": "node --experimental-strip-types --test tests/push-hardening.test.mjs",
-    "test:pwa": "node --test tests/service-worker.test.mjs",
+    "test:pwa": "node --experimental-strip-types --test tests/service-worker.test.mjs tests/pwa-install.test.mjs",
     "test:schema-baseline": "node --test tests/schema-baseline.test.mjs",
     "test:admin-audit": "node --experimental-strip-types --test tests/admin-audit.test.mjs",
     "test:push-subscriptions": "node --experimental-strip-types --test tests/push-subscriptions.test.mjs",

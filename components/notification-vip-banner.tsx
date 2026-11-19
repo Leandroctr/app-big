@@ -62,10 +62,12 @@ export function NotificationVipBanner({
   const eligible = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const isAdminRoute = pathname?.startsWith("/admin") ?? false;
+  const isInstallRoute = pathname === "/instalar" || pathname?.startsWith("/instalar/");
   const visible =
     notificationsEnabled &&
     Boolean(appConfigClient.oneSignalAppId) &&
     !isAdminRoute &&
+    !isInstallRoute &&
     eligible;
 
   const dismiss = useCallback(() => {
