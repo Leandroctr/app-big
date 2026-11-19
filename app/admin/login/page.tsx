@@ -15,6 +15,7 @@ type LoginPageProps = {
   searchParams: Promise<{
     error?: string;
     password_reset?: string;
+    activated?: string;
   }>;
 };
 
@@ -111,6 +112,7 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const hasError = params.error === "1";
   const hasPasswordReset = params.password_reset === "1";
+  const hasActivatedAccount = params.activated === "1";
   const isRateLimited = params.error === "rate_limited";
   const isSecurityUnavailable = params.error === "security_unavailable";
 
@@ -163,6 +165,12 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
           {hasPasswordReset ? (
             <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
               Senha redefinida com sucesso. Faca login novamente.
+            </p>
+          ) : null}
+
+          {hasActivatedAccount ? (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+              Acesso ativado. Faca login para configurar o autenticador TOTP.
             </p>
           ) : null}
 

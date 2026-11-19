@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = (path) => readFileSync(path, "utf8");
+const inviteModule = await import("../lib/admin-invite.ts");
 
 const guardedFiles = [
   "app/admin/page.tsx",
@@ -228,6 +229,123 @@ test("BigPix preserves password reset and password policy", () => {
   assert.match(policy, /MIN_LENGTH = 12/);
   assert.match(policy, /blockedPasswords/);
   assert.match(createRoute, /checkPasswordPolicy/);
+});
+
+test("BigPix routes only recognized Supabase Auth callbacks away from the public launcher", () => {
+  const {
+    getRootAdminAuthCallbackTarget,
+    ADMIN_ACTIVATION_PATH,
+    ADMIN_PASSWORD_RESET_PATH,
+  } = inviteModule;
+
+  assert.equal(
+    getRootAdminAuthCallbackTarget(
+      "",
+      "#access_token=access&refresh_token=refresh&type=recovery",
+    ),
+    ADMIN_PASSWORD_RESET_PATH,
+  );
+  assert.equal(
+    getRootAdminAuthCallbackTarget(
+      "",
+      "#access_token=access&refresh_token=refresh&type=invite",
+    ),
+    ADMIN_ACTIVATION_PATH,
+  );
+  assert.equal(
+    getRootAdminAuthCallbackTarget("?token_hash=hash&type=invite", ""),
+    ADMIN_ACTIVATION_PATH,
+  );
+  assert.equal(
+    getRootAdminAuthCallbackTarget(
+      "",
+      "#access_token=access&refresh_token=refresh&type=magiclink",
+    ),
+    ADMIN_ACTIVATION_PATH,
+  );
+  assert.equal(
+    getRootAdminAuthCallbackTarget("?code=pkce-code", ""),
+    ADMIN_ACTIVATION_PATH,
+  );
+  assert.equal(getRootAdminAuthCallbackTarget("", ""), null);
+  assert.equal(getRootAdminAuthCallbackTarget("?campaign=invite", ""), null);
+  assert.equal(getRootAdminAuthCallbackTarget("?error=public-error", ""), null);
+  assert.equal(
+    getRootAdminAuthCallbackTarget(
+      "?error=access_denied&error_description=expired",
+      "",
+    ),
+    ADMIN_ACTIVATION_PATH,
+  );
+});
+
+test("admin invitation callback parser fails closed across supported formats", () => {
+  const { parseAdminInviteCallback } = inviteModule;
+
+  assert.deepEqual(
+    parseAdminInviteCallback(
+      "",
+      "#access_token=access&refresh_token=refresh&type=invite",
+    ),
+    { kind: "implicit", accessToken: "access", refreshToken: "refresh" },
+  );
+  assert.deepEqual(
+    parseAdminInviteCallback("?token_hash=hash&type=invite", ""),
+    { kind: "token_hash", tokenHash: "hash", otpType: "invite" },
+  );
+  assert.deepEqual(
+    parseAdminInviteCallback("?token_hash=hash&type=magiclink", ""),
+    { kind: "token_hash", tokenHash: "hash", otpType: "magiclink" },
+  );
+  assert.deepEqual(parseAdminInviteCallback("?code=pkce-code", ""), {
+    kind: "code",
+    code: "pkce-code",
+  });
+  assert.deepEqual(
+    parseAdminInviteCallback(
+      "",
+      "#access_token=access&refresh_token=refresh&type=recovery",
+    ),
+    { kind: "invalid" },
+  );
+  assert.deepEqual(
+    parseAdminInviteCallback("?token_hash=hash&type=recovery", ""),
+    { kind: "invalid" },
+  );
+  assert.deepEqual(parseAdminInviteCallback("?error_code=otp_expired", ""), {
+    kind: "error",
+  });
+});
+
+test("admin invitation activation validates identity, scrubs tokens, and preserves MFA enforcement", () => {
+  const launcher = read("app/page.tsx");
+  const activation = read("app/admin/activate/page.tsx");
+  const validationRoute = read("app/api/admin/activation/validate/route.ts");
+  const login = read("app/admin/login/page.tsx");
+
+  assert.match(launcher, /getRootAdminAuthCallbackTarget/);
+  assert.match(activation, /history\.replaceState/);
+  assert.match(activation, /detectSessionInUrl: false/);
+  assert.match(activation, /auth\.setSession/);
+  assert.match(activation, /auth\.verifyOtp\(\{[\s\S]*type: callback\.otpType/);
+  assert.match(activation, /auth\.exchangeCodeForSession/);
+  assert.match(activation, /\/api\/admin\/activation\/validate/);
+  assert.match(activation, /checkPasswordPolicy/);
+  assert.match(activation, /auth\.updateUser\(\{ password \}\)/);
+  assert.match(activation, /scope: "global"/);
+  assert.match(activation, /\/admin\/login\?activated=1/);
+  assert.doesNotMatch(activation, /console\.|logServer|analytics\./);
+
+  assert.match(validationRoute, /auth\.getUser\(accessToken\)/);
+  assert.match(validationRoute, /\.from\("admin_users"\)/);
+  assert.match(validationRoute, /\.eq\("auth_user_id", userData\.user\.id\)/);
+  assert.match(validationRoute, /!admin\.active/);
+  assert.match(validationRoute, /role === "super_admin" \|\| role === "admin"/);
+  assert.match(validationRoute, /Cache-Control/);
+  assert.doesNotMatch(validationRoute, /console\.|logServer/);
+
+  assert.match(login, /redirect\("\/admin\/mfa"\)/);
+  assert.match(login, /configurar o autenticador TOTP/i);
 });
 
 test("BigPix super_admin link remains role-gated", () => {
