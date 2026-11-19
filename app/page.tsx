@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { NotificationButton } from "@/components/notification-button";
+import { getRootAdminAuthCallbackTarget } from "@/lib/admin-invite";
 import { appConfigClient } from "@/lib/app-config.client";
 import type { AppSettings } from "@/lib/app-settings";
 
@@ -105,12 +106,18 @@ export default function Home() {
   );
 
   useEffect(() => {
-    // Supabase Auth envia o link de recuperacao de senha do admin para a raiz
-    // do dominio (Site URL), com o token no hash (#access_token=...&type=recovery).
-    // Sem este desvio, o launcher ignoraria o hash e redirecionaria para
-    // NEXT_PUBLIC_PLATFORM_URL, perdendo o token. Ver app/admin/reset-password.
-    if (window.location.hash.includes("type=recovery")) {
-      window.location.replace(`/admin/reset-password${window.location.hash}`);
+    // Callbacks do Supabase Auth enviados para a Site URL precisam sair do
+    // launcher antes que o timer publico encaminhe o navegador para a
+    // plataforma externa. Apenas formatos Auth reconhecidos sao desviados.
+    const authCallbackTarget = getRootAdminAuthCallbackTarget(
+      window.location.search,
+      window.location.hash,
+    );
+
+    if (authCallbackTarget) {
+      window.location.replace(
+        `${authCallbackTarget}${window.location.search}${window.location.hash}`,
+      );
       return;
     }
 

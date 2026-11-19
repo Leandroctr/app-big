@@ -1423,3 +1423,45 @@ no proprio projeto, sem copiar lockfile externo e sem usar `--force`: Next.js
 das faixas compativeis; `npm ci`, os dois modos de `npm audit`, typecheck,
 lint, build e as suites de autenticacao, seguranca, auditoria administrativa e
 politica de CI foram executados depois da regeneracao do lockfile.
+
+---
+
+## Ativacao segura de convites administrativos (2026-11-19)
+
+O template padrao de convite do Supabase usa `ConfirmationURL`. Depois de
+validar o convite, o Auth redireciona para a Site URL com a sessao no fragmento
+(`type=invite`). Como a Site URL do PWA-WL aponta para a raiz do BigPix, o
+callback chegava ao launcher publico. `app/page.tsx` desviava apenas
+`type=recovery`; o convite era ignorado e o timer normal encaminhava o navegador
+para `NEXT_PUBLIC_PLATFORM_URL`, antes de o administrador definir a senha ou
+configurar MFA.
+
+A correcao adiciona `/admin/activate`, fora do launcher. A raiz desvia somente
+callbacks Auth reconhecidos. A ativacao aceita o fragmento implicit oficial,
+`token_hash` com `type=invite` e o `code` PKCE. Tambem aceita `type=magiclink`
+como alternativa operacional restrita para uma identidade administrativa ativa
+cujo convite ja foi consumido; a mesma validacao administrativa server-side e
+aplicada antes de liberar a definicao da senha. Erros e formatos incompletos
+falham fechados. Fragmento, token hash e code sao capturados somente em memoria
+e removidos da barra com `history.replaceState` antes de qualquer chamada de
+rede ou navegacao externa.
+
+O token e validado pelo Supabase Auth. Em seguida,
+`/api/admin/activation/validate` revalida o access token com `auth.getUser()` e
+confirma, por `auth_user_id`, que existe uma linha ativa em `admin_users` com
+role `admin` ou `super_admin`. Somente entao a tela permite definir a senha com
+a politica existente. Depois de `updateUser`, a sessao de ativacao e revogada e
+o usuario volta ao login. O login continua criando apenas AAL1 e redireciona
+obrigatoriamente para `/admin/mfa`; nenhum painel ou API administrativa e
+liberado sem TOTP/AAL2.
+
+Nenhuma alteracao foi feita em schema, RLS, migrations, usuarios, fatores MFA,
+Service Worker, OneSignal ou redirecionamento publico normal. Nenhum token,
+senha ou segredo foi adicionado a logs, analytics ou URLs externas.
+
+O convite original de `lenato333@gmail.com` consta como confirmado/consumido no
+Auth e nao pode ser reconstruido. Depois da publicacao desta rota, o proximo
+passo operacional seguro e enviar uma unica ligacao magica oficial para a
+identidade existente. Ela sera aceita apenas se o `auth_user_id` continuar
+vinculado a um administrador ativo; depois de definir a senha, o usuario devera
+entrar novamente e concluir o TOTP para atingir AAL2.
