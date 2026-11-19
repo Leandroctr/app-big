@@ -228,3 +228,50 @@ Registrar futuramente:
 9. Ativar para um cliente teste.
 10. Só depois ativar em produção.
 
+---
+
+## 13. Rota direta de instalação — BigPix
+
+Implementada em 2026-11-19 como referência white label, sem ativar modal global e
+sem alterar o launcher da raiz.
+
+- A rota `/instalar` é independente de `app/page.tsx`; portanto, não executa o
+  redirecionamento automático para `NEXT_PUBLIC_PLATFORM_URL`.
+- O evento `beforeinstallprompt` é capturado e retido. `prompt()` só é chamado
+  depois do clique explícito em **Instalar aplicativo**.
+- Quando o evento não está disponível, a página mostra instruções por plataforma
+  e continua ouvindo um evento que possa chegar depois.
+- Android orienta o menu do navegador; iOS orienta Safari, Compartilhar e
+  Adicionar à Tela de Início; desktop orienta Chrome/Edge.
+- `display-mode: standalone` e `navigator.standalone` identificam a execução já
+  instalada e oferecem **Abrir aplicativo**.
+- O evento `appinstalled` confirma a conclusão quando o navegador o fornece.
+- Nome, ícone e cores vêm de `app_settings`, tornando a tela reutilizável entre
+  marcas sem hardcode de BigPix.
+- A rota não baixa APK, não chama instalação sem consentimento e não persiste
+  analytics ou identificadores.
+- O banner Clube VIP fica oculto apenas em `/instalar` para não competir com o
+  CTA de instalação. A inicialização e os workers do OneSignal permanecem
+  inalterados.
+- `app/manifest.ts` continua com `start_url: "/"`; a experiência normal do PWA
+  permanece sendo o launcher existente.
+- `public/sw.js`, workers OneSignal, autenticação, MFA e administração não foram
+  alterados.
+
+### Limitações conhecidas
+
+- O navegador decide se e quando oferece `beforeinstallprompt`; a aplicação não
+  pode forçar a disponibilidade.
+- Fora de `standalone`, não existe API universal e confiável para abrir uma
+  instalação PWA já existente. A ausência do prompt também pode significar que o
+  app já está instalado.
+- A confirmação final precisa ser validada em Chrome Android real, sob HTTPS,
+  com manifest e Service Worker ativos.
+
+### Rollback
+
+Remover `app/instalar/page.tsx`, `components/pwa-install-page.tsx` e
+`lib/pwa-install.ts`; restaurar a regra anterior do banner e o comando
+`test:pwa`. Nenhum dado externo, banco, manifest ou Service Worker precisa ser
+revertido.
+
