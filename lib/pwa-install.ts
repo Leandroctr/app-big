@@ -29,6 +29,22 @@ export function isStandaloneMode(
   return displayModeStandalone || navigatorStandalone;
 }
 
+export function isIosSafari(userAgent: string): boolean {
+  return /Version\/\S+.*Safari\//i.test(userAgent) &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA|YaBrowser|Instagram|FBAN|FBAV|FB_IAB|WhatsApp|TikTok|Line\//i.test(userAgent);
+}
+
+export function getInstallUrl(publicUrl: string): string | undefined {
+  try {
+    const url = new URL("/instalar", publicUrl);
+    if (url.protocol === "https:" || url.protocol === "http:") {
+      return `${url.origin}${url.pathname}`;
+    }
+  } catch {
+    // When no public URL is configured, the browser supplies the current origin.
+  }
+}
+
 export function getReadableTextColor(backgroundColor: string): "#ffffff" | "#111827" {
   const normalized = backgroundColor.trim().replace(/^#/, "");
   const expanded =
