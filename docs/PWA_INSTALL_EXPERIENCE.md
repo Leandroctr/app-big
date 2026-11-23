@@ -246,8 +246,27 @@ sem alterar o launcher da raiz.
 - `display-mode: standalone` e `navigator.standalone` identificam a execução já
   instalada e oferecem **Abrir aplicativo**.
 - O evento `appinstalled` confirma a conclusão quando o navegador o fornece.
-- Nome, ícone e cores vêm de `app_settings`, tornando a tela reutilizável entre
-  marcas sem hardcode de BigPix.
+- `getAppSettings()` fornece os dados e a origem pública de cada tenant.
+  `lib/pwa-install-brand.ts` reúne perfis visuais por `tenant_domain`, com
+  substituições opcionais de nome, frase comercial, logo, ícone, mascote, cores
+  e gradientes. Os perfis viajam no mesmo código compartilhado; o domínio já
+  configurado para o PWA seleciona o perfil. O componente recebe os dados de
+  marca e mantém as mesmas instruções técnicas e estados para todos os perfis.
+- O perfil do BigPix usa `icon.png`, `logo.png` e `tiger.png`, copiados sem
+  alterações da pasta `public/brands/bigpix` da landing aprovada. Os três
+  arquivos são servidos pela origem do PWA. As moedas e a textura do banner da
+  referência não têm arquivos aprovados separados; o banner usa apenas o logo,
+  o mascote e o gradiente CSS. Para tenants sem perfil, a rota usa os settings
+  existentes e omite áreas de imagem quando faltam os ativos; os ícones genéricos
+  do manifest não entram na composição visual da rota.
+- Em iOS, **Ver como instalar** leva ao card manual. Fora do Safari, o primeiro
+  passo mostra o endereço `/instalar` na origem de `settings.publicUrl` para
+  copiar e abrir no Safari. Na ausência dessa configuração, usa o endereço da
+  rota atual. No Safari, o card orienta a usar Compartilhar, Adicionar à Tela de
+  Início e Abrir como App da Web, quando disponível.
+- O aceite no convite nativo mostra que a instalação foi autorizada. Um evento
+  `appinstalled` recebido antes da resolução do convite prevalece sobre o
+  aceite. Cancelamento e erro no convite retornam ao card manual.
 - A rota não baixa APK, não chama instalação sem consentimento e não persiste
   analytics ou identificadores.
 - O banner Clube VIP fica oculto apenas em `/instalar` para não competir com o
@@ -266,12 +285,18 @@ sem alterar o launcher da raiz.
   instalação PWA já existente. A ausência do prompt também pode significar que o
   app já está instalado.
 - A confirmação final precisa ser validada em Chrome Android real, sob HTTPS,
-  com manifest e Service Worker ativos.
+  com manifest e Service Worker ativos. A adição no Safari também precisa de
+  validação em um iPhone real. As capturas locais usam Chrome com emulação de
+  viewport e User-Agent. Os eventos de instalação e standalone foram simulados.
+- A validação local executou typecheck, build e a suíte `test:pwa`, além do
+  Chrome em 320, 375, 393 e 430 px. No navegador foram exercitados o CTA manual,
+  o convite tardio, o cancelamento, a falha, o aceite, o `appinstalled` e o
+  standalone. Uma configuração neutra abriu a mesma rota sem ativos de marca.
+- O erro Cloudflare 520 informado para `https://app-bigpix.com` segue como
+  pendência externa. O launcher continua usando a configuração comercial existente.
 
 ### Rollback
 
-Remover `app/instalar/page.tsx`, `components/pwa-install-page.tsx` e
-`lib/pwa-install.ts`; restaurar a regra anterior do banner e o comando
-`test:pwa`. Nenhum dado externo, banco, manifest ou Service Worker precisa ser
-revertido.
+Para reverter a reforma visual, reverta o commit da branch
+`fix/pwa-install-white-label`. Isso restaura a versão anterior de `/instalar`.
 

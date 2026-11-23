@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   detectInstallPlatform,
+  getInstallUrl,
   getReadableTextColor,
+  isIosSafari,
   isStandaloneMode,
 } from "../lib/pwa-install.ts";
 
@@ -25,6 +27,20 @@ test("standalone detection accepts both display-mode and the iOS navigator flag"
   assert.equal(isStandaloneMode(true, false), true);
   assert.equal(isStandaloneMode(false, true), true);
   assert.equal(isStandaloneMode(false, false), false);
+});
+
+test("iOS Safari detection excludes other browsers and embedded browsers", () => {
+  const safari = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0) Version/26.0 Mobile/15E148 Safari/604.1";
+  assert.equal(isIosSafari(safari), true);
+  assert.equal(isIosSafari(safari.replace("Version/26.0", "CriOS/140.0")), false);
+  assert.equal(isIosSafari(`${safari} Instagram 400`), false);
+});
+
+test("the manual install address uses the configured PWA origin and dedicated route", () => {
+  assert.equal(getInstallUrl("https://pwa.example.com/landing?campaign=a"), "https://pwa.example.com/instalar");
+  assert.equal(getInstallUrl("http://localhost:3000/"), "http://localhost:3000/instalar");
+  assert.equal(getInstallUrl("ftp://example.com/"), undefined);
+  assert.equal(getInstallUrl(""), undefined);
 });
 
 test("brand button text keeps readable contrast for light and dark colors", () => {
@@ -53,9 +69,16 @@ test("installation is requested only from the explicit user action", () => {
 test("standalone and no-prompt states have explicit safe fallbacks", () => {
   assert.match(installComponentSource, /display-mode: standalone/);
   assert.match(installComponentSource, /Abrir aplicativo/);
-  assert.match(installComponentSource, /O prompt automático não está disponível agora/);
-  assert.match(installComponentSource, /Nenhum APK é baixado/);
+  assert.match(installComponentSource, /Ver como instalar/);
+  assert.match(installComponentSource, /Copie este endereço e cole no Safari/);
   assert.match(installComponentSource, /Adicionar à Tela de Início/);
+});
+
+test("the shared component uses only assets from the supplied brand", () => {
+  assert.doesNotMatch(installComponentSource, /bigpix|apkbig|placeholder/i);
+  assert.match(installComponentSource, /src=\{brand\.iconUrl\}/);
+  assert.match(installComponentSource, /src=\{brand\.logoUrl\}/);
+  assert.match(installComponentSource, /src=\{brand\.mascotUrl\}/);
 });
 
 test("manifest, service worker and OneSignal integration invariants remain intact", () => {
