@@ -230,7 +230,7 @@ Registrar futuramente:
 
 ---
 
-## 13. Rota direta de instalação — BigPix
+## 13. Central de Instalação — rota `/instalar`
 
 Implementada em 2026-11-19 como referência white label, sem ativar modal global e
 sem alterar o launcher da raiz.
@@ -248,18 +248,18 @@ sem alterar o launcher da raiz.
 - O evento `appinstalled` confirma a conclusão quando o navegador o fornece.
 - `getAppSettings()` fornece os dados e a origem pública de cada tenant.
   `lib/pwa-install-brand.ts` reúne perfis visuais por `tenant_domain`, com
-  substituições opcionais de nome, frase comercial, logo, ícone, mascote, cores
-  e gradientes. Os perfis viajam no mesmo código compartilhado; o domínio já
+  substituições opcionais de nome, ícone, cores, gradientes e sombras. Os
+  perfis viajam no mesmo código compartilhado; o domínio já
   configurado para o PWA seleciona o perfil. O componente recebe os dados de
   marca e mantém as mesmas instruções técnicas e estados para todos os perfis.
-- O perfil do BigPix usa `icon.png`, `logo.png` e `tiger.png`, copiados sem
-  alterações da pasta `public/brands/bigpix` da landing aprovada. Os três
-  arquivos são servidos pela origem do PWA. O banner usa moedas em CSS e reaproveita
-  os gradientes, os reflexos e as sombras da landing com tokens do perfil de marca.
-  Os efeitos decorativos são opcionais. O CSS posiciona e recorta o mascote.
-  Para tenants sem perfil, a rota usa os settings
-  existentes e omite áreas de imagem quando faltam os ativos; os ícones genéricos
-  do manifest não entram na composição visual da rota.
+- O cabeçalho centraliza o ícone oficial, o nome e o subtítulo **Central de
+  instalação**. A composição segue com o CTA ou mensagem do estado atual, o
+  card de instruções quando aplicável e o link **Continuar sem instalar**.
+  As cores, os gradientes, os ícones SVG de instrução e os números circulares
+  seguem a identidade da landing. A área promocional foi removida da rota.
+- O perfil do BigPix usa o `icon.png` oficial da landing aprovada. Para os
+  demais tenants, a rota usa os settings existentes. Quando falta o ícone da
+  marca, o cabeçalho centralizado mostra o nome e o subtítulo.
 - Em iOS, **Ver como instalar** leva ao card manual. Fora do Safari, o primeiro
   passo mostra o endereço `/instalar` na origem de `settings.publicUrl` para
   copiar e abrir no Safari. Na ausência dessa configuração, usa o endereço da
@@ -294,18 +294,18 @@ sem alterar o launcher da raiz.
   com manifest e Service Worker ativos. A adição no Safari também precisa de
   validação em um iPhone real. As capturas locais usam Chrome com emulação de
   viewport e User-Agent. Os eventos de instalação e standalone foram simulados.
-- A validação local executou typecheck, build e a suíte `test:pwa`, além do
+- A validação local executou typecheck, build, ESLint e a suíte `test:pwa`, além do
   Chrome em 320, 375, 393 e 430 px. No navegador foram exercitados o CTA manual,
   o convite tardio, o cancelamento, a falha, o aceite sem confirmação, o
   `appinstalled` e o standalone. Os cinco outros domínios ativos foram
   exercitados com settings locais de fallback em todas as larguras. Em 393 px,
   o CTA, o card e as etapas mantiveram a mesma estrutura e as mesmas instruções.
-  A comparação a 393 px e as capturas ficam em `out/pwa-install-fidelity/`.
+  As capturas da Central de Instalação ficam em `out/pwa-install-final-ui/`.
 - O erro Cloudflare 520 informado para `https://app-bigpix.com` segue como
   pendência externa. O launcher continua usando a configuração comercial existente.
 
 ### Rollback
 
-Para reverter a reforma visual, reverta o commit da branch
-`fix/pwa-install-white-label`. Isso restaura a versão anterior de `/instalar`.
+Para restaurar a composição anterior de `/instalar`, reverta o commit visual
+da branch `fix/pwa-install-final-ui`.
 
