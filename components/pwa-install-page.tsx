@@ -161,15 +161,6 @@ export function PwaInstallPage({ brand }: { brand: InstallBrand }) {
   const pageStyle = {
     "--install-primary": brand.themeColor,
     "--install-background": brand.backgroundColor,
-    "--install-hero": brand.heroBackground,
-    "--install-hero-shadow": brand.heroInsetShadow,
-    "--install-hero-highlight": brand.heroHighlight,
-    "--install-hero-glow": brand.heroGlow,
-    "--install-logo-shadow": brand.heroLogoShadow,
-    "--install-mascot-shadow": brand.mascotShadow,
-    "--install-coin-border": brand.coins?.border,
-    "--install-coin-background": brand.coins?.background,
-    "--install-coin-shadow": brand.coins?.shadow,
     "--install-action": brand.actionBackground,
     "--install-action-shadow": brand.actionInsetShadow,
     "--install-on-action": brand.actionTextColor ?? getReadableTextColor(brand.themeColor),
@@ -266,37 +257,13 @@ export function PwaInstallPage({ brand }: { brand: InstallBrand }) {
       <div className={styles.content}>
         <header className={styles.brand}>
           {brand.iconUrl && (
-            <Image alt="" className={styles.appIcon} height={96} width={96} src={brand.iconUrl} unoptimized />
+            <Image alt="" className={styles.appIcon} height={112} width={112} src={brand.iconUrl} unoptimized />
           )}
           <div>
             <h1>{brand.name}</h1>
-            {brand.tagline && <p>{brand.tagline}</p>}
+            <p>Central de instalação</p>
           </div>
         </header>
-
-        {(brand.logoUrl || brand.mascotUrl) && (
-          <div className={styles.hero} aria-hidden="true" data-mascot={Boolean(brand.mascotUrl)}>
-            <div className={styles.heroBackground}>
-              {brand.heroGlow && <span className={styles.heroGlow} />}
-            </div>
-            {brand.logoUrl && (
-              <Image alt="" className={styles.logo} height={160} width={360} src={brand.logoUrl} unoptimized />
-            )}
-            {(brand.mascotUrl || brand.coins) && (
-              <div className={styles.heroForeground}>
-                {brand.mascotUrl && (
-                  <Image alt="" className={styles.mascot} height={1075} width={1463} src={brand.mascotUrl} unoptimized />
-                )}
-                {brand.coins && (
-                  <>
-                    <span className={styles.coin} />
-                    <span className={styles.coin} />
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {isPrompt ? (
           <button className={styles.action} disabled={phase === "prompting"} onClick={requestInstall} type="button">

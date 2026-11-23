@@ -14,7 +14,6 @@ function getInstallBrand(settings: AppSettings): InstallBrand {
 
   return {
     name: settings.appShortName || settings.appName,
-    logoUrl: settings.logoUrl,
     iconUrl: [settings.icon512Url, settings.icon192Url].find(
       (url) => url && url !== placeholderIcons.icon512 && url !== placeholderIcons.icon192,
     ),

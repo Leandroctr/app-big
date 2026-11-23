@@ -74,11 +74,11 @@ test("standalone and no-prompt states have explicit safe fallbacks", () => {
   assert.match(installComponentSource, /Adicionar à Tela de Início/);
 });
 
-test("the shared component uses only assets from the supplied brand", () => {
+test("the installation center uses only the supplied brand's app icon", () => {
   assert.doesNotMatch(installComponentSource, /bigpix|apkbig|placeholder/i);
-  assert.match(installComponentSource, /src=\{brand\.iconUrl\}/);
-  assert.match(installComponentSource, /src=\{brand\.logoUrl\}/);
-  assert.match(installComponentSource, /src=\{brand\.mascotUrl\}/);
+  const images = installComponentSource.match(/<Image\b[^>]*>/g) ?? [];
+  assert.equal(images.length, 1);
+  assert.match(images[0], /src=\{brand\.iconUrl\}/);
 });
 
 test("manifest, service worker and OneSignal integration invariants remain intact", () => {
