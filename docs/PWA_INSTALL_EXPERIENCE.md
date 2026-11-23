@@ -254,9 +254,10 @@ sem alterar o launcher da raiz.
   marca e mantém as mesmas instruções técnicas e estados para todos os perfis.
 - O perfil do BigPix usa `icon.png`, `logo.png` e `tiger.png`, copiados sem
   alterações da pasta `public/brands/bigpix` da landing aprovada. Os três
-  arquivos são servidos pela origem do PWA. As moedas e a textura do banner da
-  referência não têm arquivos aprovados separados; o banner usa apenas o logo,
-  o mascote e o gradiente CSS. Para tenants sem perfil, a rota usa os settings
+  arquivos são servidos pela origem do PWA. O banner usa moedas em CSS e reaproveita
+  os gradientes, os reflexos e as sombras da landing com tokens do perfil de marca.
+  Os efeitos decorativos são opcionais. O CSS posiciona e recorta o mascote.
+  Para tenants sem perfil, a rota usa os settings
   existentes e omite áreas de imagem quando faltam os ativos; os ícones genéricos
   do manifest não entram na composição visual da rota.
 - Em iOS, **Ver como instalar** leva ao card manual. Fora do Safari, o primeiro
@@ -266,7 +267,12 @@ sem alterar o launcher da raiz.
   Início e Abrir como App da Web, quando disponível.
 - O aceite no convite nativo mostra que a instalação foi autorizada. Um evento
   `appinstalled` recebido antes da resolução do convite prevalece sobre o
-  aceite. Cancelamento e erro no convite retornam ao card manual.
+  aceite. Se o navegador não emitir `appinstalled`, o CTA **Ver como instalar**,
+  o card manual e o link **Continuar sem instalar** ficam disponíveis. O aceite
+  sozinho não confirma a instalação. Cancelamento e erro no convite retornam ao
+  card manual.
+- O card mostra ícones SVG de plataforma e três etapas numeradas, com texto
+  fixo por plataforma. As etapas partem da rota real de instalação do PWA.
 - A rota não baixa APK, não chama instalação sem consentimento e não persiste
   analytics ou identificadores.
 - O banner Clube VIP fica oculto apenas em `/instalar` para não competir com o
@@ -290,8 +296,11 @@ sem alterar o launcher da raiz.
   viewport e User-Agent. Os eventos de instalação e standalone foram simulados.
 - A validação local executou typecheck, build e a suíte `test:pwa`, além do
   Chrome em 320, 375, 393 e 430 px. No navegador foram exercitados o CTA manual,
-  o convite tardio, o cancelamento, a falha, o aceite, o `appinstalled` e o
-  standalone. Uma configuração neutra abriu a mesma rota sem ativos de marca.
+  o convite tardio, o cancelamento, a falha, o aceite sem confirmação, o
+  `appinstalled` e o standalone. Os cinco outros domínios ativos foram
+  exercitados com settings locais de fallback em todas as larguras. Em 393 px,
+  o CTA, o card e as etapas mantiveram a mesma estrutura e as mesmas instruções.
+  A comparação a 393 px e as capturas ficam em `out/pwa-install-fidelity/`.
 - O erro Cloudflare 520 informado para `https://app-bigpix.com` segue como
   pendência externa. O launcher continua usando a configuração comercial existente.
 
