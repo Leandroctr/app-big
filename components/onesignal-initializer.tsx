@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import OneSignal from "react-onesignal";
+import { getRootAdminAuthCallbackTarget } from "@/lib/admin-invite";
 
 declare global {
   interface Window {
@@ -69,6 +70,9 @@ async function sendSubscription(id: string): Promise<boolean> {
 
 export function OneSignalInitializer() {
   useEffect(() => {
+    const { pathname, search, hash } = window.location;
+    if (pathname === "/" && getRootAdminAuthCallbackTarget(search, hash)) return;
+
     if (window.__ONESIGNAL_INITED__) return;
     window.__ONESIGNAL_INITED__ = true;
 

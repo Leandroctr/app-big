@@ -501,6 +501,9 @@ P2.
 
 ### M-2 — headers de segurança e CSP
 
+A abertura restrita do JSONP do OneSignal e o plano de revalidação formal
+da CETEC estão documentados em [Paridade do OneSignal e fallback offline](ONESIGNAL_CSP_PILOT.md).
+
 **Corrigido no código.** Todas as respostas recebem:
 
 - `Content-Security-Policy`, inclusive `frame-ancestors 'none'`;

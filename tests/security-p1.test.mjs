@@ -112,3 +112,85 @@ test("M-2 exposes the required security headers and frame protection", async () 
   assert.match(contentSecurityPolicy, /https:\/\/\*\.supabase\.co/);
   assert.match(contentSecurityPolicy, /worker-src 'self' blob:/);
 });
+
+async function headersForBuildAppId(appId) {
+  const key = "NEXT_PUBLIC_ONESIGNAL_APP_ID";
+  const previous = process.env[key];
+  try {
+    if (appId === undefined) delete process.env[key];
+    else process.env[key] = appId;
+    return await nextConfig.headers();
+  } finally {
+    if (previous === undefined) delete process.env[key];
+    else process.env[key] = previous;
+  }
+}
+
+test("M-2 adds only the configured JSONP script to root HTML requests", async () => {
+  const appId = "123E4567-E89B-42D3-A456-426614174000";
+  const baseline = await headersForBuildAppId(undefined);
+  const rules = await headersForBuildAppId(appId);
+  assert.deepEqual(rules.slice(0, baseline.length), baseline);
+  const rootRules = rules.slice(baseline.length);
+  assert.equal(rootRules.length, 2);
+  assert.deepEqual(rootRules[0], {
+    source: "/",
+    headers: [{ key: "Cache-Control", value: "private, no-store" }],
+  });
+
+  const document = rootRules[1];
+  assert.equal(document.source, "/");
+  assert.equal(document.has.length, 1);
+  assert.equal(document.has[0].type, "header");
+  assert.equal(document.has[0].key, "accept");
+  const accepts = new RegExp(`^(?:${document.has[0].value})$`);
+  assert.match("text/html,application/xhtml+xml,*/*;q=0.8", accepts);
+  assert.match("application/xhtml+xml, text/html;q=0.9", accepts);
+  assert.doesNotMatch("text/x-component", accepts);
+  assert.doesNotMatch("*/*", accepts);
+  assert.deepEqual(document.missing, [
+    { type: "header", key: "rsc" },
+    { type: "header", key: "next-router-prefetch" },
+    { type: "header", key: "next-router-segment-prefetch" },
+    { type: "query", key: "code" },
+    { type: "query", key: "token_hash" },
+    { type: "query", key: "type" },
+    { type: "query", key: "error_code" },
+    { type: "query", key: "error_description" },
+  ]);
+  assert.deepEqual(document.headers, [
+    {
+      key: "Content-Security-Policy",
+      value: `${contentSecurityPolicy}; script-src-elem 'self' 'unsafe-inline' https://cdn.onesignal.com https://api.onesignal.com/sync/${appId}/web`,
+    },
+  ]);
+});
+
+test("M-2 keeps the baseline with missing or invalid build configuration", async () => {
+  const baseline = await headersForBuildAppId(undefined);
+  for (const invalid of [
+    "",
+    "not-an-id",
+    "123e4567-e89b-12d3-a456-426614174000",
+    "123e4567-e89b-42d3-7456-426614174000",
+    "123e4567-e89b-42d3-a456-426614174000\n",
+    "123e4567-e89b-42d3-a456-426614174000/web",
+  ]) {
+    assert.deepEqual(await headersForBuildAppId(invalid), baseline);
+  }
+});
+
+test("offline documents have a dedicated same-origin URL and CDN no-store", async () => {
+  const rules = await headersForBuildAppId("123e4567-e89b-42d3-a456-426614174000");
+  assert.deepEqual(await nextConfig.rewrites(), [{ source: "/pwa-offline", destination: "/" }]);
+  assert.deepEqual(rules.filter((rule) => rule.source === "/pwa-offline"), [{
+    source: "/pwa-offline",
+    headers: [
+      { key: "Cache-Control", value: "no-cache, max-age=0, must-revalidate" },
+      { key: "CDN-Cache-Control", value: "no-store" },
+    ],
+  }]);
+  assert.equal(rules.filter((rule) =>
+    rule.headers.some(({ value }) => value.includes("script-src-elem")),
+  )[0].source, "/");
+});
