@@ -1,0 +1,202 @@
+/* Scope the page layout to the launcher, including when the VIP banner is present. */
+:global(body):has(> .splash) {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  min-block-size: 100svh;
+}
+
+:global(body):has(> .splash) > .splash {
+  min-block-size: 0;
+}
+
+.splash {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  flex: 1;
+  min-block-size: 100vh;
+  min-block-size: 100svh;
+  place-items: center;
+  overflow: hidden;
+  padding:
+    max(1.75rem, env(safe-area-inset-top))
+    max(1.25rem, env(safe-area-inset-right))
+    max(1.75rem, env(safe-area-inset-bottom))
+    max(1.25rem, env(safe-area-inset-left));
+  color: #142238;
+  background-color: var(--splash-base);
+  background-image:
+    radial-gradient(ellipse at 50% 29%, color-mix(in srgb, var(--splash-accent) 37%, white), transparent 68%),
+    linear-gradient(165deg, #f8fbff, color-mix(in srgb, var(--splash-base) 17%, #f6f9fd));
+}
+
+.atmosphere {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.artwork {
+  object-fit: cover;
+  filter: blur(18px);
+  opacity: 0.14;
+  transform: scale(1.12);
+}
+
+.content {
+  display: grid;
+  justify-items: center;
+  inline-size: min(100%, 29rem);
+  gap: 1.125rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.emblem {
+  position: relative;
+  isolation: isolate;
+}
+
+.emblem::before {
+  position: absolute;
+  z-index: -1;
+  inset: -17%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--splash-accent) 60%, transparent), transparent 70%);
+  content: "";
+  animation: glow 3s ease-in-out infinite;
+}
+
+.mark {
+  display: grid;
+  inline-size: clamp(6rem, 31vw, 9rem);
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 85%);
+  border-radius: 28%;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(15 35 61 / 18%);
+  color: #142238;
+  font-size: 3rem;
+  font-weight: 800;
+  animation: zoom 700ms ease-out both;
+}
+
+.logo {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.copy {
+  animation: enter 580ms 100ms ease-out both;
+}
+
+.copy h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.copy p,
+.error {
+  margin: 0.5rem 0 0;
+  color: #354864;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.loading {
+  display: flex;
+  gap: 0.55rem;
+  padding-block: 0.15rem;
+}
+
+.loading span {
+  inline-size: 0.43rem;
+  block-size: 0.43rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--splash-accent) 68%, #17304b);
+  animation: pulse 1.3s ease-in-out infinite;
+}
+
+.loading span:nth-child(2) { animation-delay: 150ms; }
+.loading span:nth-child(3) { animation-delay: 300ms; }
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.primary,
+.support {
+  display: inline-grid;
+  min-block-size: 44px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0.6rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.primary {
+  border: 1px solid color-mix(in srgb, var(--splash-accent) 45%, #152944);
+  color: #fff;
+  background: #152944;
+  box-shadow: 0 6px 16px rgb(17 38 67 / 18%);
+}
+
+.primary:disabled {
+  color: #45556a;
+  background: #e8eef5;
+  box-shadow: none;
+}
+
+.support {
+  color: #273b57;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.primary:focus-visible,
+.support:focus-visible {
+  outline: 2px solid #152944;
+  outline-offset: 3px;
+}
+
+@keyframes zoom {
+  from { transform: scale(0.88); }
+  to { transform: scale(1); }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: 0.55; transform: scale(0.94); }
+  50% { opacity: 0.92; transform: scale(1.22); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark,
+  .emblem::before,
+  .copy,
+  .loading span {
+    animation: none;
+  }
+}

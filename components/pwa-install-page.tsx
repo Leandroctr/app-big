@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   detectInstallPlatform,
@@ -271,7 +270,8 @@ export function PwaInstallPage({ brand }: { brand: InstallBrand }) {
             Instalar aplicativo
           </button>
         ) : phase === "standalone" ? (
-          <Link className={styles.action} href="/">Abrir aplicativo</Link>
+          // eslint-disable-next-line @next/next/no-html-link-for-pages -- Load the root document's CSP.
+          <a className={styles.action} href="/">Abrir aplicativo</a>
         ) : showInstructions ? (
           <a className={styles.action} href="#instrucoes">
             <InstallIcon name="download" className={styles.downloadIcon} />
@@ -285,7 +285,8 @@ export function PwaInstallPage({ brand }: { brand: InstallBrand }) {
         )}
 
         {phase !== "standalone" && (
-          <Link className={styles.continue} href="/">Continuar sem instalar</Link>
+          // eslint-disable-next-line @next/next/no-html-link-for-pages -- Load the root document's CSP.
+          <a className={styles.continue} href="/">Continuar sem instalar</a>
         )}
       </div>
     </main>

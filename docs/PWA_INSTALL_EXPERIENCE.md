@@ -2,6 +2,23 @@
 
 # PWA Install Experience
 
+## Splash nativo e volta da Central
+
+O launcher renderiza o Splash React/CSS desde o primeiro HTML. `logoUrl` fornece
+a marca central e `splashImageUrl` fornece a arte decorativa. As cores, o
+título e a mensagem vêm da configuração pública do tenant. Zoom, brilho,
+pontos e entrada do texto respeitam `prefers-reduced-motion`.
+
+O HTML animado legado permanece armazenado. O launcher preserva Clube VIP,
+suporte e a proteção de navegação única entre abertura manual, conclusão do
+SDK e temporizador. Os callbacks administrativos reconhecidos continuam
+seguindo os destinos internos da BigPix antes do launcher.
+
+Os links de retorno da Central carregam um documento novo em `/`. A marca,
+os ativos, o endereço de instalação e as instruções da Central seguem a
+configuração BigPix. A arquitetura de CSP e fallback offline está registrada
+em [Paridade do OneSignal](ONESIGNAL_CSP_PILOT.md).
+
 **Projeto:** app-big-pwa  
 **Objetivo:** criar uma experiência white label para incentivar instalação do PWA.
 
